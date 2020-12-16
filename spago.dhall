@@ -14,6 +14,9 @@
   , "node-path"
   , "node-fs-aff"
   , "ansi"
+  , "argonaut-codecs"
+  , "argonaut-generic"
+  , "generics-rep"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

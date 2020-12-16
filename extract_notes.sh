@@ -4,7 +4,8 @@
 # a small wrapper around the python script to avoid docker commands
 #
 
-filepath="/home/srghma/Dropbox/zotfile/Klein_2014_Learn German with stories.pdf"
+filename="Klein_2014_Learn German with stories"
+filepath="/home/srghma/Dropbox/zotfile/$filename.pdf"
 
 docker run \
   -it \
@@ -13,7 +14,8 @@ docker run \
   -v $PWD/extract_pdf_notes.py:/usr/bin/extract_pdf_notes \
   --user $(id -u):$(id -u) \
   extract_pdf_notes \
-  python3 /usr/bin/extract_pdf_notes /myfile.pdf
+  /usr/bin/extract_pdf_notes /myfile.pdf -p
+  # --progress -o "/Documents/$filename-annotations.txt"
 
 # input_file=${1}
 # filename=$(basename "${1}")

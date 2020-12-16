@@ -14,7 +14,7 @@ docker run \
   -v $PWD/extract_pdf_notes.py:/usr/bin/extract_pdf_notes \
   --user $(id -u):$(id -u) \
   extract_pdf_notes \
-  /usr/bin/extract_pdf_notes /myfile.pdf -p
+  /usr/bin/extract_pdf_notes /myfile.pdf
   # --progress -o "/Documents/$filename-annotations.txt"
 
 # input_file=${1}

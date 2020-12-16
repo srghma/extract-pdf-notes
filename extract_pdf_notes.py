@@ -19,6 +19,7 @@ import pdfminer.pdftypes as pdftypes
 import pdfminer.settings
 import pdfminer.utils
 import beeprint
+import simplejson
 
 pdfminer.settings.STRICT = False
 
@@ -35,8 +36,10 @@ SUBSTITUTIONS = {
     u'…': '...',
 }
 
-ANNOT_SUBTYPES = frozenset({'Text', 'Highlight', 'Squiggly', 'StrikeOut', 'Underline'})
+# ANNOT_SUBTYPES = frozenset({'Text', 'Highlight', 'Squiggly', 'StrikeOut', 'Underline'})
+ANNOT_SUBTYPES = frozenset({'Squiggly'})
 ANNOT_NITS = frozenset({'Squiggly', 'StrikeOut', 'Underline'})
+SENTENCE_END = frozenset({'.', '?', '!'})
 
 COLUMNS_PER_PAGE = 2 # default only, changed via a command-line parameter
 
@@ -65,29 +68,30 @@ def boxhit(item, box):
     else:
         return overlap_area >= 0.5 * item_area
 
+def my_testboxes(annots, item):
+    hits = frozenset({a for a in annots if any({boxhit(item, b) for b in a.boxes})})
+    return hits
+
+sentence_and_its_annotations = list()
+
 class RectExtractor(TextConverter):
     def __init__(self, rsrcmgr, codec='utf-8', pageno=1, laparams=None):
         dummy = io.StringIO()
         TextConverter.__init__(self, rsrcmgr, outfp=dummy, codec=codec, pageno=pageno, laparams=laparams)
         self.annots = set()
-        self.sentences = list()
+        # self.sentences = list()
         self.current_sentence = ''
+        self.current_sentence_should_be_added_to_annotations_on_end = set()
 
     def my_setannots(self, annots):
         self.annots = {a for a in annots if a.boxes}
 
     # main callback from parent PDFConverter
     def receive_layout(self, ltpage):
-        beeprint.pp({ "receive_layout": ltpage })
+        # beeprint.pp({ "receive_layout": ltpage })
         self._lasthit = frozenset()
         self._curline = set()
         self.render(ltpage)
-
-    def my_testboxes(self, item):
-        hits = frozenset({a for a in self.annots if any({boxhit(item, b) for b in a.boxes})})
-        self._lasthit = hits
-        self._curline.update(hits)
-        return hits
 
     # "broadcast" newlines to _all_ annotations that received any text on the
     # current line, in case they see more text on the next line, even if the
@@ -97,34 +101,70 @@ class RectExtractor(TextConverter):
             a.capture('\n')
         self._curline = set()
 
-    def my_append_sentence_or_dump(self, text, item):
-        is_end_of_sentence = text == ' ' and self.current_sentence != '' and self.current_sentence[-1] == '.'
+    def my_append_sentence_or_dump(self, text, item, hits):
+        is_end_of_sentence = text == ' ' and self.current_sentence != '' and self.current_sentence[-1] in SENTENCE_END
         is_newline = text == '\n'
+
+        self.current_sentence_should_be_added_to_annotations_on_end.update(hits)
+
+        word_have_started =  len(hits - self._lasthit) > 0
+        word_have_ended =    len(self._lasthit - hits) > 0
+
+        # if len(hits_diff) > 0:
+        # beeprint.pp(
+        #         {
+        #             "current_sentence":   self.current_sentence,
+        #             # "is_end_of_sentence": is_end_of_sentence,
+        #             # "is_newline":         is_newline,
+        #             # "item":               item,
+        #             # "hits":               list(hits),
+        #             "hits__text":         list(map(lambda x: { "text": x.text, "tagname": x.tagname }, hits)),
+        #             # "_curline":           list(self._curline),
+        #             # "_lasthit":           list(self._lasthit),
+        #             # "word_have_started":  len(hits - self._lasthit) > 0,
+        #             # "word_have_ended":    len(self._lasthit - hits) > 0,
+        #         })
+
         if is_end_of_sentence or is_newline:
             # import pdb; pdb.set_trace()
-            beeprint.pp(
-                    {
-                        "current_sentence": self.current_sentence,
-                        "is_end_of_sentence": is_end_of_sentence,
-                        "is_newline": is_newline,
-                        "item": item,
-                    })
+            # beeprint.pp(
+            #         {
+            #             "current_sentence": self.current_sentence,
+            #             "is_end_of_sentence": is_end_of_sentence,
+            #             "is_newline": is_newline,
+            #             "item": item,
+            #         })
+            if len(self.current_sentence_should_be_added_to_annotations_on_end) > 0:
+                sentence_and_its_annotations.append(
+                        {
+                            "sentence": '%s' % self.current_sentence,
+                            "annotations": list(map(lambda x: { "text": x.text, "contents": x.contents }, self.current_sentence_should_be_added_to_annotations_on_end)),
+                        })
+
             self.current_sentence = ''
 
+            self.current_sentence_should_be_added_to_annotations_on_end = set()
+
             return
+
+        if word_have_started:
+            self.current_sentence += '<strong>'
+
+        if word_have_ended:
+            self.current_sentence += '</strong>'
 
         self.current_sentence += text
 
     def render(self, item):
         # beeprint.pp({ type: "render", item: item })
-        beeprint.pp(
-                {
-                    # "type": "render",
-                    # "item": item,
-                    # "lasthit": list(map(lambda x: { "text": x.text, "tagname": x.tagname }, self._lasthit)),
-                    # "curline": list(map(lambda x: { "text": x.text, "tagname": x.tagname }, self._curline)),
-                    "current_sentence": self.current_sentence,
-                })
+        # beeprint.pp(
+        #         {
+        #             "type": "render",
+        #             "item": item,
+        #             "lasthit": list(map(lambda x: { "text": x.text, "tagname": x.tagname }, self._lasthit)),
+        #             "curline": list(map(lambda x: { "text": x.text, "tagname": x.tagname }, self._curline)),
+        #             "current_sentence": self.current_sentence,
+        #         })
         # beeprint.pp(list(map(lambda x: x.text, self._lasthit)))
         # beeprint.pp(list(map(lambda x: x.text, self._curline)))
 
@@ -136,9 +176,20 @@ class RectExtractor(TextConverter):
             # Text boxes are a subclass of container, and somehow encode newlines
             # (this weird logic is derived from pdfminer.converter.TextConverter)
             if isinstance(item, LTTextBox):
-                self.my_testboxes(item)
+                hits = my_testboxes(self.annots, item)
+
+                # beeprint.pp(
+                #         {
+                #             "type": "LTTextBox",
+                #             "hits": hits,
+                #         })
+
+                self.my_append_sentence_or_dump('\n', item, hits)
+
+                self._lasthit = hits
+                self._curline.update(hits)
+
                 self.my_capture_newline()
-                self.my_append_sentence_or_dump('\n', item)
 
         # Each character is represented by one LTChar, and we must handle
         # individual characters (not higher-level objects like LTTextLine)
@@ -146,9 +197,22 @@ class RectExtractor(TextConverter):
         elif isinstance(item, LTChar):
             text = item.get_text()
 
-            self.my_append_sentence_or_dump(text, item)
+            # beeprint.pp(
+            #         {
+            #             "type": "LTTextBox",
+            #             "hits": hits,
+            #         })
 
-            for a in self.my_testboxes(item):
+
+            hits = my_testboxes(self.annots, item)
+
+            self.my_append_sentence_or_dump(text, item, hits)
+
+            self._lasthit = hits
+            self._curline.update(hits)
+
+
+            for a in hits:
                 a.capture(text)
                 # beeprint.pp({ "type": "asdfasdf", "text": text, "current_sentence": self.current_sentence })
 
@@ -159,7 +223,7 @@ class RectExtractor(TextConverter):
             text = item.get_text()
             if text == '\n':
                 self.my_capture_newline()
-                self.my_append_sentence_or_dump('\n', item)
+                # self.my_append_sentence_or_dump(' ', item)
             else:
                 for a in self._lasthit:
                     a.capture(text)
@@ -244,6 +308,10 @@ class Annotation:
     # custom < operator for sorting
     def __lt__(self, other):
         return self.getstartpos() < other.getstartpos()
+
+    # custom == operator for sorting
+    # def __eq__(self, other):
+    #     return simplejson.dump(self.boxes) == simplejson.dump(other.boxes)
 
 
 class Pos:
@@ -526,10 +594,11 @@ def get_outlines(doc, pageslist, pagesdict):
 def process_file(fh, emit_progress):
     rsrcmgr = PDFResourceManager()
     laparams = LAParams()
-    retstr = io.BytesIO()
+    # retstr = io.BytesIO()
     # retstr = open("demofile2.txt", "a")
-    # device = RectExtractor(rsrcmgr, laparams=laparams)
-    device = HTMLConverter(rsrcmgr, retstr, laparams=laparams)
+    device = RectExtractor(rsrcmgr, laparams=laparams)
+    # device = HTMLConverter(rsrcmgr, retstr, laparams=laparams)
+    # device = TextConverter(rsrcmgr, retstr, laparams=laparams)
     interpreter = PDFPageInterpreter(rsrcmgr, device)
     parser = PDFParser(fh)
     doc = PDFDocument(parser)
@@ -557,7 +626,7 @@ def process_file(fh, emit_progress):
 
             page.annots = getannots(pdfannots, page)
             page.annots.sort()
-            # device.my_setannots(page.annots)
+            device.my_setannots(page.annots)
             interpreter.process_page(pdfpage)
             allannots.extend(page.annots)
 
@@ -565,8 +634,8 @@ def process_file(fh, emit_progress):
         sys.stderr.write("\n")
 
     # str = retstr.getvalue()
-    print("%s" % retstr.getvalue())
-    retstr.close()
+    # print("%s" % retstr.getvalue())
+    # retstr.close()
 
     # print(str)
 
@@ -626,15 +695,17 @@ def main():
         # print(list(map(lambda x: vars(x), annots)))
         # print(outlines)
 
-        pp = PrettyPrinter(outlines, args.wrap)
+        # pp = PrettyPrinter(outlines, args.wrap)
 
-        if args.printfilename and annots:
-            print("# File: '%s'\n" % file.name)
+        # if args.printfilename and annots:
+        #     print("# File: '%s'\n" % file.name)
 
-        if args.group:
-            pp.printall_grouped(args.sections, annots, args.output)
-        else:
-            pp.printall(annots, args.output)
+        # if args.group:
+        #     pp.printall_grouped(args.sections, annots, args.output)
+        # else:
+        #     pp.printall(annots, args.output)
+
+        beeprint.pp(sentence_and_its_annotations, args.output)
 
     return 0
 

@@ -19,4 +19,4 @@ ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 USER nobody
 WORKDIR /notes
-ENTRYPOINT ["/usr/bin/extract_pdf_notes"]
+# ENTRYPOINT ["/usr/bin/extract_pdf_notes"]

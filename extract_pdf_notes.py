@@ -6,15 +6,16 @@ import PyQt5
 
 resolution = 150
 
-
 def main():
 
-    doc = popplerqt5.Poppler.Document.load(sys.argv[1])
+    print(sys.argv)
+    filename=sys.argv[1]
+    doc = popplerqt5.Poppler.Document.load(filename)
     if not doc:
-        print("Failed to load the file. Check if the provided document is valid PDF - \t[{}]".format(sys.argv[1]))
+        print("Failed to load the file. Check if the provided document is valid PDF - \t[{}]".format(filename))
         sys.exit(1)
 
-    print(sys.argv[1])
+    print(filename)
     total_annotations = 0
 
     for i in range(doc.numPages()):
@@ -30,8 +31,10 @@ def main():
 
                 if isinstance(annotation, popplerqt5.Poppler.Annotation):
                     total_annotations += 1
-                    
+
                     if isinstance(annotation, popplerqt5.Poppler.HighlightAnnotation):
+                        import pdb; pdb.set_trace()
+
                         quads = annotation.highlightQuads()
                         txt = ""
                         for quad in quads:
@@ -44,32 +47,32 @@ def main():
                             txt = txt + str(page.text(bdy)) + ' '
 
                         #print("========= ANNOTATION =========")
-                        print(txt)
+                        print("txt", txt)
                         if annotation.contents():
                             print("\t - {}".format(annotation.contents()))
-                        
-                    if isinstance(annotation, popplerqt5.Poppler.GeomAnnotation):
-                        count += 1
-                        bounds = annotation.boundary()
 
-                        # default we have height/width as per 72p rendering so converting to different resolution
-                        (width, height) = (pwidth*resolution/72, pheight*resolution/72)
+                    # if isinstance(annotation, popplerqt5.Poppler.GeomAnnotation):
+                    #     count += 1
+                    #     bounds = annotation.boundary()
 
-                        bdy = PyQt5.QtCore.QRectF(
-                            bounds.left()*width, 
-                            bounds.top()*height, 
-                            bounds.width()*width, 
-                            bounds.height()*height
-                        )
-                        
-                        page.renderToImage(resolution, resolution, bdy.left(), bdy.top(), bdy.width(), bdy.height()).save("{}_page{}_image{}.png".format(sys.argv[1], i, count))
-                        print("{}_page{}_image{}.png".format(sys.argv[1], i, count))
-                        if annotation.contents():
-                            print("\t - {}".format(annotation.contents()))
-                        
-                    if isinstance(annotation, popplerqt5.Poppler.TextAnnotation):
-                        if annotation.contents():
-                            print("\t - {}".format(annotation.contents()))
+                    #     # default we have height/width as per 72p rendering so converting to different resolution
+                    #     (width, height) = (pwidth*resolution/72, pheight*resolution/72)
+
+                    #     bdy = PyQt5.QtCore.QRectF(
+                    #         bounds.left()*width,
+                    #         bounds.top()*height,
+                    #         bounds.width()*width,
+                    #         bounds.height()*height
+                    #     )
+
+                    #     page.renderToImage(resolution, resolution, bdy.left(), bdy.top(), bdy.width(), bdy.height()).save("{}_page{}_image{}.png".format(sys.argv[1], i, count))
+                    #     print("{}_page{}_image{}.png".format(sys.argv[1], i, count))
+                    #     if annotation.contents():
+                    #         print("\t - {}".format(annotation.contents()))
+
+                    # if isinstance(annotation, popplerqt5.Poppler.TextAnnotation):
+                    #     if annotation.contents():
+                    #         print("\t - {}".format(annotation.contents()))
 
     if total_annotations > 0:
         pass

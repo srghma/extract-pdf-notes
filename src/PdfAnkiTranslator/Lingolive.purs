@@ -1,4 +1,0 @@
-module PdfAnkiTranslator.Lingolive where
-
-key = "ZDkwOTkyMTktODFmNC00OTdlLThjNjMtZTg3NzU0NWZhMmFlOmE0OWViNmViMDIyYTQwYzhiZTU2NDk4NDJmNTI3YTdk"
-

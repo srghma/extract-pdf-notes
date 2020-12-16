@@ -36,6 +36,15 @@ SUBSTITUTIONS = {
     u'…': '...',
 }
 
+def strip_and_substitute(text):
+  return ''.join([SUBSTITUTIONS.get(c, c) for c in text.strip()])
+
+def strip_and_substitute_or_null(text):
+  if text is None:
+    return None
+
+  return strip_and_substitute(text)
+
 # ANNOT_SUBTYPES = frozenset({'Text', 'Highlight', 'Squiggly', 'StrikeOut', 'Underline'})
 ANNOT_SUBTYPES = frozenset({'Squiggly'})
 ANNOT_NITS = frozenset({'Squiggly', 'StrikeOut', 'Underline'})
@@ -137,8 +146,8 @@ class RectExtractor(TextConverter):
             if len(self.current_sentence_should_be_added_to_annotations_on_end) > 0:
                 sentence_and_its_annotations.append(
                         {
-                            "sentence": '%s' % self.current_sentence,
-                            "annotations": list(map(lambda x: { "text": x.text, "contents": x.contents }, self.current_sentence_should_be_added_to_annotations_on_end)),
+                            "sentence": strip_and_substitute('%s' % self.current_sentence),
+                            "annotations": list(map(lambda x: { "text": strip_and_substitute(x.text), "contents": strip_and_substitute_or_null(x.contents) }, self.current_sentence_should_be_added_to_annotations_on_end)),
                         })
 
             self.current_sentence = ''
@@ -288,7 +297,7 @@ class Annotation:
         if self.boxes:
             if self.text:
                 # replace tex ligatures (and other common odd characters)
-                return ''.join([SUBSTITUTIONS.get(c, c) for c in self.text.strip()])
+                return strip_and_substitute(self.text)
             else:
                 # something's strange -- we have boxes but no text for them
                 return "(XXX: missing text!)"
@@ -705,7 +714,8 @@ def main():
         # else:
         #     pp.printall(annots, args.output)
 
-        beeprint.pp(sentence_and_its_annotations, args.output)
+        simplejson.dump(sentence_and_its_annotations, args.output, sort_keys=True, indent=2 * ' ')
+        # beeprint.pp(.., args.output)
 
     return 0
 

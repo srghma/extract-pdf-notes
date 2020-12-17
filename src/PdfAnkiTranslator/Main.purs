@@ -3,11 +3,13 @@ module PdfAnkiTranslator.Main where
 import Protolude
 import Foreign
 
-newtype InputElement = InputElement
-  { "annotations" :: Array
-    { "contents" :: Maybe String
-    , "text" :: String
-    }
+newtype InputElement
+  = InputElement
+  { "annotations" ::
+    Array
+      { "contents" :: Maybe String
+      , "text" :: String
+      }
   , "sentence" :: String
   }
 

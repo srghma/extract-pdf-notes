@@ -2,7 +2,6 @@ module PdfAnkiTranslator.Lingolive.Translation where
 
 import Data.Argonaut.Decode
 import Protolude
-
 import Affjax as Affjax
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode.Decoders as Decoders
@@ -11,10 +10,10 @@ import Data.Generic.Rep.Show (genericShow)
 import Foreign.Object (Object)
 import PdfAnkiTranslator.Lingolive.Types
 
-type Config =
-  { token :: String
-  , serviceUrl :: String
-  }
+type Config
+  = { token :: String
+    , serviceUrl :: String
+    }
 
 data Response
   = Response__Success (Array ArticleModel)

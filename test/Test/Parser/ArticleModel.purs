@@ -20,6 +20,7 @@ import Test.Spec.Assertions (shouldEqual)
 import Test.Spec.Reporter as Test.Spec.Reporter
 import Test.Spec.Runner as Test.Spec.Runner
 import PdfAnkiTranslator.Lingolive.Types
+import PdfAnkiTranslator.Lingolive.Decoders
 
 type JsonTest =
   { name :: String
@@ -40,7 +41,7 @@ jsonTests =
 
 addText :: JsonTest -> Aff JsonTestWithExpected
 addText test = do
-  let path = Node.Path.concat ["test", "Test", "Parser", "ArticleModel", test.name, "Expected.txt"]
+  let path = Node.Path.concat ["test", "Test", "Parser", "ArticleModel", test.name, "Expected.json"]
   absolutePath <- liftEffect $ Node.Path.resolve [] path
   expected <- readTextFile UTF8 absolutePath
   pure { name: test.name, actual: test.actual, expected }
@@ -48,12 +49,9 @@ addText test = do
 mkAllTests :: Array JsonTestWithExpected -> Test.Spec.Spec Unit
 mkAllTests = \tests -> traverse_ mkTest tests
   where
-  parse :: Json -> Either JsonDecodeError (Array ArticleModel)
-  parse = undefined
-
   mkTest :: JsonTestWithExpected -> Test.Spec.Spec Unit
   mkTest test = Test.Spec.it test.name do
-    actualParsed <- (parseJson test.expected >>= parse)
+    actualParsed <- (parseJson test.expected >>= decodeArticleModels)
       # either (throwError <<< error <<< printJsonDecodeError) pure
     actualParsed `shouldEqual` test.actual
 

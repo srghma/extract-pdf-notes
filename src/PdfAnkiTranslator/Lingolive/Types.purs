@@ -74,9 +74,9 @@ derive newtype instance ordNodeType_ListItem :: Ord NodeType_ListItem
 
 data NodeType
   = NodeType__Comment       -- 0
-    -- | { "Text" :: String
-    -- | , "IsOptional" :: Boolean
-    { "Markup" :: Array NodeType
+    { "Text" :: String
+    , "IsOptional" :: Boolean
+    , "Markup" :: Array NodeType
     }
   | NodeType__Paragraph     -- 1
     -- | , "Text" :: Maybe String
@@ -109,18 +109,23 @@ data NodeType
   | NodeType__CardRef       -- 10
     { "Dictionary" :: String
     , "ArticleId" :: String
+    , "Text" :: String
+    , "IsOptional" :: Boolean
     }
   | NodeType__Transcription -- 11
     -- | {
     -- | }
   | NodeType__Abbrev        -- 12
     { "FullText" :: String
+    , "Text" :: String
+    , "IsOptional" :: Boolean
     }
   | NodeType__Caption       -- 13
     -- | {
     -- | }
   | NodeType__Sound         -- 14
     { "FileName" :: String
+    , "IsOptional" :: Boolean
     }
   | NodeType__Ref           -- 15
     -- | {

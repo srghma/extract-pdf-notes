@@ -28,7 +28,10 @@ derive newtype instance ordNodeType_Text :: Ord NodeType_Text
 
 ----------
 
-newtype NodeType_Example = NodeType_Example (Array NodeType_Text)
+newtype NodeType_Example = NodeType_Example
+  { "Markup" :: Array NodeType_Text
+  , "IsOptional" :: Boolean
+  }
 
 derive instance genericNodeType_Example :: Generic NodeType_Example _
 
@@ -41,7 +44,10 @@ derive newtype instance ordNodeType_Example :: Ord NodeType_Example
 
 -----------
 
-newtype NodeType_ExampleItem = NodeType_ExampleItem NodeType_Example
+newtype NodeType_ExampleItem = NodeType_ExampleItem
+  { "Markup" :: Array NodeType_Example
+  , "IsOptional" :: Boolean
+  }
 
 derive instance genericNodeType_ExampleItem :: Generic NodeType_ExampleItem _
 
@@ -54,12 +60,12 @@ derive newtype instance ordNodeType_ExampleItem :: Ord NodeType_ExampleItem
 
 ----------
 
-newtype NodeType_ListItem = NodeType_ListItem (Array NodeType)
+newtype NodeType_ListItem = NodeType_ListItem
   -- "Node" :: NodeType
   -- "Text" :: Maybe String -- null
   -- | { "IsOptional" :: Boolean -- false
-  -- | { "Markup" ::
-  -- | }
+  { "Markup" :: Array NodeType
+  }
 
 derive instance genericNodeType_ListItem :: Generic NodeType_ListItem _
 
@@ -74,9 +80,8 @@ derive newtype instance ordNodeType_ListItem :: Ord NodeType_ListItem
 
 data NodeType
   = NodeType__Comment       -- 0
-    { "Text" :: String
+    { "Markup" :: Array NodeType
     , "IsOptional" :: Boolean
-    , "Markup" :: Array NodeType
     }
   | NodeType__Paragraph     -- 1
     -- | , "Text" :: Maybe String
@@ -91,9 +96,11 @@ data NodeType
   -- | | NodeType__ListItem      -- 4
   -- |   {
   -- |   }
-  | NodeType__Examples (Array NodeType_ExampleItem)      -- 5
-    -- | "Text": null,
-    -- | "IsOptional": true
+  | NodeType__Examples      -- 5
+    { "IsOptional" :: Boolean
+    , "Items" :: Array NodeType_ExampleItem
+    }
+    -- | , "Type": Maybe String -- null
   -- | | NodeType__ExampleItem   -- 6
   -- |   {
   -- |   }

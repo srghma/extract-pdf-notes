@@ -34,35 +34,45 @@ decodeNodeType_Text stobj = do
     , "IsOptional": isOptional
     }
 
-decodeNodeType_Example :: forall r . STObject r Json -> ExceptT JsonDecodeError (ST r) NodeType_Example
--- | decodeNodeType_Example stobj = Decoders.decodeArray decodeNodeType_Text >>> map NodeType_Example
-decodeNodeType_Example stobj = except $ Left MissingValue
-
-decodeNodeType_ExampleItem :: forall r . STObject r Json -> ExceptT JsonDecodeError (ST r) NodeType_Example
--- | decodeNodeType_ExampleItem = decodeNodeType_Example >>> map NodeType_ExampleItem
-decodeNodeType_ExampleItem stobj = except $ Left MissingValue
-
-decodeNodeType_ListItem :: Json -> ExceptT JsonDecodeError NodeType_ListItem
--- | decodeNodeType_ListItem = Decoders.decodeArray decodeNodeType >>> map NodeType_ListItem
-decodeNodeType_ListItem stobj = except $ Left MissingValue
+decodeNodeType_Text' :: Json -> Either JsonDecodeError NodeType_Text
+decodeNodeType_Text' = decodeJson >=> decodeObjectAndUseUpAllFields \stobj -> withExceptT (Named "NodeType_Text") do
+  (_ :: String) <- stobj `getFieldAndPop` "Node"
+  decodeNodeType_Text stobj
 
 decodeNodeType :: Json -> Either JsonDecodeError NodeType
-decodeNodeType = decodeJson >=> decodeObjectAndUseUpAllFields \stobj ->
+decodeNodeType json =
+  let
+      decodeNodeType_Example :: Json -> Either JsonDecodeError NodeType_Example
+      decodeNodeType_Example = decodeJson >=> \obj -> do
+        (markup :: Array NodeType_Text) <- Decoders.getField (Decoders.decodeArray decodeNodeType_Text') obj "Markup"
+        (isOptional :: Boolean) <- obj `getField` "IsOptional"
+        pure $ NodeType_Example { "Markup": markup, "IsOptional": isOptional }
+
+      decodeNodeType_ExampleItem :: Json -> Either JsonDecodeError NodeType_ExampleItem
+      decodeNodeType_ExampleItem = decodeJson >=> \obj -> do
+        (markup :: Array NodeType_Example) <- Decoders.getField (Decoders.decodeArray decodeNodeType_Example) obj "Markup"
+        (isOptional :: Boolean) <- obj `getField` "IsOptional"
+        pure $ NodeType_ExampleItem { "Markup": markup, "IsOptional": isOptional }
+
+      decodeNodeType_ListItem :: Json -> Either JsonDecodeError NodeType_ListItem
+      decodeNodeType_ListItem = decodeJson >=> \obj -> do
+         (markup :: Array NodeType) <- Decoders.getField (Decoders.decodeArray decodeNodeType) obj "Markup"
+         pure $ NodeType_ListItem { "Markup": markup }
+  in decodeJson json >>= decodeObjectAndUseUpAllFields \stobj ->
   stobj `getFieldAndPop` "Node" >>=
     case _ of
       "Comment" -> withExceptT (Named "NodeType__Comment") do
-        (text :: String) <- stobj `getFieldAndPop` "Text"
+        (_ :: Unit) <- getFieldAndPop' decodeNull stobj "Text"
         (isOptional :: Boolean) <- stobj `getFieldAndPop` "IsOptional"
         markup <- getFieldAndPop' (Decoders.decodeArray decodeNodeType) stobj "Node"
         pure $ NodeType__Comment
-          { "Text": text
-          , "IsOptional": isOptional
+          { "IsOptional": isOptional
           , "Markup": markup
           }
       "Paragraph" -> withExceptT (Named "NodeType__Paragraph") do
         (text :: Unit) <- getFieldAndPop' decodeNull stobj "Text"
         (isOptional :: Boolean) <- stobj `getFieldAndPop` "IsOptional"
-        markup <- getFieldAndPop' (Decoders.decodeArray decodeNodeType_ListItem) stobj "Markup"
+        markup <- getFieldAndPop' (Decoders.decodeArray decodeNodeType) stobj "Markup"
         pure $ NodeType__Paragraph
           { "IsOptional": isOptional
           , "Markup": markup
@@ -70,15 +80,22 @@ decodeNodeType = decodeJson >=> decodeObjectAndUseUpAllFields \stobj ->
       "Text" -> withExceptT (Named "NodeType__Text") $ decodeNodeType_Text stobj <#> NodeType__Text
       "List" -> withExceptT (Named "NodeType__List") do
          (_type :: Int) <- getFieldAndPop' Decoders.decodeInt stobj "Type"
-         (items :: Int) <- getFieldAndPop' (Decoders.decodeArray decodeNodeType) stobj "Items"
-         (text :: Unit) <- getFieldAndPop' decodeNull stobj "Text"
-         (isOptional :: Boolean) <- stobj `getFieldAndPop` "IsOptional"
-         markup <- getFieldAndPop' (Decoders.decodeArray decodeNodeType) stobj "Markup"
-         pure $ NodeType__Paragraph
-           { "IsOptional": isOptional
-           , "Markup": markup
+         (items :: Array NodeType_ListItem) <- getFieldAndPop' (Decoders.decodeArray decodeNodeType_ListItem) stobj "Items"
+         (_ :: Unit) <- getFieldAndPop' decodeNull stobj "Text"
+         (_ :: Boolean) <- stobj `getFieldAndPop` "IsOptional"
+         pure $ NodeType__List
+           { "Type": _type
+           , "Items": items
            }
-      "Examples" -> withExceptT (Named "NodeType__Examples") $ except $ Left MissingValue
+      "Examples" -> withExceptT (Named "NodeType__Examples") do
+         (_ :: Unit) <- getFieldAndPop' decodeNull stobj "Type"
+         (items :: Array NodeType_ExampleItem) <- getFieldAndPop' (Decoders.decodeArray decodeNodeType_ExampleItem) stobj "Items"
+         (_ :: Unit) <- getFieldAndPop' decodeNull stobj "Text"
+         (isOptional :: Boolean) <- stobj `getFieldAndPop` "IsOptional"
+         pure $ NodeType__Examples
+           { "IsOptional": isOptional
+           , "Items": items
+           }
       "CardRefs" -> withExceptT (Named "NodeType__CardRefs") $ except $ Left MissingValue
       "CardRefItem" -> withExceptT (Named "NodeType__CardRefItem") $ except $ Left MissingValue
       "CardRef" -> withExceptT (Named "NodeType__CardRef") do

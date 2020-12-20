@@ -721,7 +721,8 @@ def main():
         # else:
         #     pp.printall(annots, args.output)
 
-        simplejson.dump(sentence_and_its_annotations, args.output, sort_keys=True, indent=2 * ' ')
+        # ensure_ascii=False - dont dump with /u0xxx
+        simplejson.dump(sentence_and_its_annotations, args.output, sort_keys=True, indent=2 * ' ', ensure_ascii=False)
         # beeprint.pp(.., args.output)
 
     return 0

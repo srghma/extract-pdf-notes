@@ -1,6 +1,5 @@
 module Test.Parser.ArticleModel where
 
-import PdfAnkiTranslator.Lingolive.Translation
 import Protolude
 import Control.Parallel (parTraverse)
 import Data.Argonaut.Core (Json)

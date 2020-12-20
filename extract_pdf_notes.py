@@ -20,6 +20,7 @@ import pdfminer.settings
 import pdfminer.utils
 import beeprint
 import simplejson
+import ftfy # https://stackoverflow.com/a/64859584/3574379
 
 pdfminer.settings.STRICT = False
 
@@ -38,12 +39,6 @@ SUBSTITUTIONS = {
 
 def strip_and_substitute(text):
   return ''.join([SUBSTITUTIONS.get(c, c) for c in text.strip()])
-
-def strip_and_substitute_or_null(text):
-  if text is None:
-    return None
-
-  return strip_and_substitute(text)
 
 # ANNOT_SUBTYPES = frozenset({'Text', 'Highlight', 'Squiggly', 'StrikeOut', 'Underline'})
 ANNOT_SUBTYPES = frozenset({'Squiggly'})
@@ -84,7 +79,7 @@ def my_testboxes(annots, item):
 sentence_and_its_annotations = list()
 
 class RectExtractor(TextConverter):
-    def __init__(self, rsrcmgr, codec='utf-8', pageno=1, laparams=None):
+    def __init__(self, rsrcmgr, codec='cp1251', pageno=1, laparams=None):
         dummy = io.StringIO()
         TextConverter.__init__(self, rsrcmgr, outfp=dummy, codec=codec, pageno=pageno, laparams=laparams)
         self.annots = set()
@@ -143,12 +138,20 @@ class RectExtractor(TextConverter):
             #             "is_newline": is_newline,
             #             "item": item,
             #         })
-            if len(self.current_sentence_should_be_added_to_annotations_on_end) > 0:
-                sentence_and_its_annotations.append(
-                        {
-                            "sentence": strip_and_substitute('%s' % self.current_sentence),
-                            "annotations": list(map(lambda x: { "text": strip_and_substitute(x.text), "contents": strip_and_substitute_or_null(x.contents) }, self.current_sentence_should_be_added_to_annotations_on_end)),
-                        })
+            for x in self.current_sentence_should_be_added_to_annotations_on_end:
+              if x.contents is None:
+                annotation_content = None
+              else:
+                annotation_content = ftfy.fix_text(strip_and_substitute(x.contents))
+
+              # print(strip_and_substitute(x.text))
+
+              sentence_and_its_annotations.append(
+                      {
+                          "sentence":           ftfy.fix_text(strip_and_substitute(self.current_sentence)),
+                          "annotation_text":    ftfy.fix_text(strip_and_substitute(x.text)),
+                          "annotation_content": annotation_content
+                      })
 
             self.current_sentence = ''
 
@@ -206,10 +209,12 @@ class RectExtractor(TextConverter):
         elif isinstance(item, LTChar):
             text = item.get_text()
 
+            # print(text)
             # beeprint.pp(
             #         {
             #             "type": "LTTextBox",
-            #             "hits": hits,
+            #             "text": text,
+            #             # "hits": hits,
             #         })
 
 
@@ -291,7 +296,9 @@ class Annotation:
             elif not self.text.endswith(' '):
                 self.text += ' '
         else:
+            # print(text)
             self.text += text
+            # print(self.text)
 
     def gettext(self):
         if self.boxes:

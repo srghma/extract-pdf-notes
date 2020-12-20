@@ -5,4 +5,5 @@ FROM python:3
 # chmod a+x /usr/bin/extract_pdf_notes && \
 RUN pip install --no-cache-dir pdfminer.six beeprint
 RUN pip install --no-cache-dir simplejson
+RUN pip install --no-cache-dir ftfy
 # ENTRYPOINT ["/usr/bin/extract_pdf_notes"]

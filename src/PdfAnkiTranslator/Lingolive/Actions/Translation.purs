@@ -1,4 +1,4 @@
-module PdfAnkiTranslator.Lingolive.Translation where
+module PdfAnkiTranslator.Lingolive.Actions.Translation where
 
 import Data.Argonaut.Decode
 import Protolude

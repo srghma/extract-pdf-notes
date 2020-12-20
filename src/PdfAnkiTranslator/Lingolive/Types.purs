@@ -166,7 +166,7 @@ derive newtype instance ordArticleNode :: Ord ArticleNode
 newtype ArticleModel
   = ArticleModel
   { "Title" :: String
-  , "TitleMarkup" :: Array ArticleNode
+  , "TitleMarkup" :: Array ArticleNode -- NodeType_Text
   , "Dictionary" :: String
   , "ArticleId" :: String
   , "Body" :: Array ArticleNode

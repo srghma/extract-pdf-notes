@@ -13,11 +13,11 @@ import Foreign.Object as Object
 import Node.Encoding as Node.Encoding
 import Node.FS.Aff as Node.FS.Aff
 
-newtype Url = Url String
+newtype Key = Key String
 
 type Cache =
-  { get :: Url -> Effect (Maybe Json)
-  , set :: Url -> Json -> Effect Unit
+  { get :: Key -> Effect (Maybe Json)
+  , set :: Key -> Json -> Effect Unit
   }
 
 type CacheWithPersist =
@@ -39,10 +39,10 @@ createCacheWithPersist filename = do
 
   pure
     { cache:
-      { get: \(Url url) -> do
+      { get: \(Key key) -> do
           obj <- Effect.Ref.read ref
-          pure $ Object.lookup url obj
-      , set: \(Url url) newJson -> Effect.Ref.modify_ (Object.insert url newJson) ref
+          pure $ Object.lookup key obj
+      , set: \(Key key) newJson -> Effect.Ref.modify_ (Object.insert key newJson) ref
       }
     , persist: do
        obj <- liftEffect $ Effect.Ref.read ref

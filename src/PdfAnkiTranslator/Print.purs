@@ -1,12 +1,14 @@
 module PdfAnkiTranslator.Print where
 
+import Data.Foldable
 import PdfAnkiTranslator.Lingolive.Types
 import Protolude
 
+import Data.Array (catMaybes) as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import Data.Foldable
 import Data.String as String
+import PdfAnkiTranslator.SimpleXMLWithIndentation (tagOneline)
 
 type AnkiFields =
   { question      :: String -- orig lang
@@ -52,13 +54,13 @@ printBodyFromAbbyy = String.joinWith "\n" <<< map printArticleModel
     wrapText x str =
       let
         props = Array.catMaybes
-        [ if x."IsItalics" then Just (Tuple "font-style" "italic") else Nothing
-        , if x."IsAccent" then Just (Tuple "color" "red") else Nothing
-        ]
+          [ if x."IsItalics" then Just (Tuple "font-style" "italic") else Nothing
+          , if x."IsAccent" then Just (Tuple "color" "red") else Nothing
+          ]
       in
-       if null props
-         then str
-         else tagOneline "span" props str
+        if null props
+          then str
+          else tagOneline "span" props str
 
     printArticleNode :: ArticleNode -> String
     printArticleNode (ArticleNode x) = printNodeType x
@@ -84,13 +86,13 @@ printBodyFromAbbyy = String.joinWith "\n" <<< map printArticleModel
         NodeType__Ref -> Nothing
         NodeType__Unsupported -> Nothing
       where
-        printNodeType_ListItem :: NodeType_ListItem -> Maybe String
+        printNodeType_ListItem :: NodeType_ListItem -> String
         printNodeType_ListItem (NodeType_ListItem x) = String.joinWith "\n" $ map printNodeType x."Markup"
 
-        printNodeType_ExampleItem :: NodeType_ExampleItem -> Maybe String
+        printNodeType_ExampleItem :: NodeType_ExampleItem -> String
         printNodeType_ExampleItem (NodeType_ExampleItem x) = String.joinWith "\n" $ map printNodeType x."Markup"
 
-        printNodeType_Example :: NodeType_Example -> Maybe String
+        printNodeType_Example :: NodeType_Example -> String
         printNodeType_Example (NodeType_Example x) = String.joinWith "\n" $ map printNodeType x."Markup"
 
 printArticleModel ::

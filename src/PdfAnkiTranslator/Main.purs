@@ -1,23 +1,26 @@
 module PdfAnkiTranslator.Main where
 
 import Data.Argonaut.Decode
-import Protolude
 import Foreign
-import Data.Argonaut.Decode.Decoders                    as Decoders
-import Options.Applicative                              as Options.Applicative
-import PdfAnkiTranslator.Config                         as PdfAnkiTranslator.Config
-import PdfAnkiTranslator.ReadStdin                      as PdfAnkiTranslator.ReadStdin
-import PdfAnkiTranslator.Input                          as PdfAnkiTranslator.Input
-import PdfAnkiTranslator.AffjaxCache                          as PdfAnkiTranslator.AffjaxCache
-import PdfAnkiTranslator.Lingolive.Actions.Authenticate as PdfAnkiTranslator.Lingolive.Actions.Authenticate
-import Affjax                           as Affjax
-import Affjax.ResponseFormat            as Affjax.ResponseFormat
-import PdfAnkiTranslator.Lingolive.Actions.Translation as PdfAnkiTranslator.Lingolive.Actions.Translation
 import PdfAnkiTranslator.Languages
+import PdfAnkiTranslator.Lingolive.Types
+import Protolude
+
+import Affjax as Affjax
+import Affjax.ResponseFormat as Affjax.ResponseFormat
+import Data.Argonaut.Decode.Decoders as Decoders
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
-import PdfAnkiTranslator.Lingolive.Types
+import Options.Applicative as Options.Applicative
+import PdfAnkiTranslator.AffjaxCache as PdfAnkiTranslator.AffjaxCache
+import PdfAnkiTranslator.Config as PdfAnkiTranslator.Config
 import PdfAnkiTranslator.GoogleTranslate.Translate as PdfAnkiTranslator.GoogleTranslate.Translate
+import PdfAnkiTranslator.Input (InputElement)
+import PdfAnkiTranslator.Input as PdfAnkiTranslator.Input
+import PdfAnkiTranslator.Lingolive.Actions.Authenticate as PdfAnkiTranslator.Lingolive.Actions.Authenticate
+import PdfAnkiTranslator.Lingolive.Actions.Translation as PdfAnkiTranslator.Lingolive.Actions.Translation
+import PdfAnkiTranslator.Print as PdfAnkiTranslator.Print
+import PdfAnkiTranslator.ReadStdin as PdfAnkiTranslator.ReadStdin
 
 -- ./extract_notes.sh | spago run --main PdfAnkiTranslator.Main --node-args '--cache ./mycache.json'
 
@@ -29,8 +32,8 @@ main = do
     inputJsonString <- PdfAnkiTranslator.ReadStdin.readStdin
       >>= maybe (throwError $ error "Expected stdin") pure
 
-    input <- parseJson inputJsonString
-      >>= Decoders.decodeArray PdfAnkiTranslator.Input.decodeInputElement
+    (input :: NonEmptyArray InputElement) <- parseJson inputJsonString
+      >>= Decoders.decodeNonEmptyArray PdfAnkiTranslator.Input.decodeInputElement
       # either (throwError <<< error <<< printJsonDecodeError) pure
 
     traceM input
@@ -60,9 +63,15 @@ main = do
         , requestFn: PdfAnkiTranslator.AffjaxCache.requestWithCache cache
         }
         { q: text
-        , target: German
-        , source: Russian
+        , source: German
+        , target: Russian
         }
         >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError text) pure
 
-      traceM googleResult
+      traceM $ PdfAnkiTranslator.Print.printArticleModel
+        { fromAbbyy:           abbyyResult
+        , fromGoogleTranslate: googleResult
+        , sentence:            (NonEmptyArray.head input).sentence
+        , annotation_text:     (NonEmptyArray.head input).annotation_text
+        , annotation_content:  (NonEmptyArray.head input).annotation_content
+        }

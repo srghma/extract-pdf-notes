@@ -1,5 +1,6 @@
 module PdfAnkiTranslator.GoogleTranslate.Translate where
 
+import PdfAnkiTranslator.CodecArgunautExtra
 import PdfAnkiTranslator.GoogleTranslate.Config
 import PdfAnkiTranslator.Languages
 import Protolude
@@ -70,9 +71,6 @@ responseCodec =
         )
       )
     )
-
-nonEmptyArray ∷ forall a . Data.Codec.Argonaut.JsonCodec a -> Data.Codec.Argonaut.JsonCodec (NonEmptyArray a)
-nonEmptyArray codec = Data.Codec.Argonaut.prismaticCodec NonEmptyArray.fromArray NonEmptyArray.toArray (Data.Codec.Argonaut.array codec)
 
 request :: Config -> Input -> Aff (Either Error (NonEmptyArray String))
 request config input = request' config input <#> map responseToWords

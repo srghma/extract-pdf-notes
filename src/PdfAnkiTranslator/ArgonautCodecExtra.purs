@@ -1,4 +1,4 @@
-module PdfAnkiTranslator.Utils where
+module PdfAnkiTranslator.ArgonautCodecExtra where
 
 import Protolude
 import Data.Argonaut.Decode

@@ -119,8 +119,9 @@ data NodeType
     , "IsOptional" :: Boolean
     }
   | NodeType__Transcription -- 11
-  -- | {
-  -- | }
+    { "Text" :: String
+    , "IsOptional" :: Boolean
+    }
   | NodeType__Abbrev -- 12
     { "FullText" :: String
     , "Text" :: String

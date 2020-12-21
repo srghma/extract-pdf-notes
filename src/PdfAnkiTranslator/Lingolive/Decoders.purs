@@ -18,7 +18,7 @@ import Foreign.Object (Object)
 import Foreign.Object as Object
 import Foreign.Object.ST (STObject)
 import Foreign.Object.ST as STObject
-import PdfAnkiTranslator.Utils
+import PdfAnkiTranslator.ArgonautCodecExtra
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 

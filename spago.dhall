@@ -20,6 +20,7 @@
   , "optparse"
   , "node-url"
   , "codec-argonaut"
+  , "yarn"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

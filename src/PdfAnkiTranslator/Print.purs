@@ -48,19 +48,12 @@ printBodyFromAbbyy :: NonEmptyArray ArticleModel -> String
 printBodyFromAbbyy = String.joinWith "\n" <<< map printArticleModel <<< NonEmptyArray.toArray
   where
     printArticleModel :: ArticleModel -> String
-    printArticleModel (ArticleModel x) = String.joinWith "\n" $ [ String.joinWith "" $ map printArticleNode x."TitleMarkup" ] <> (map printArticleNode x."Body")
+    printArticleModel (ArticleModel x) = String.joinWith "\n" $ [ tagOneline "b" [] $ String.joinWith "" $ map printArticleNode x."TitleMarkup" ] <> (map printArticleNode x."Body")
 
     wrapText :: forall r . { "IsItalics" :: Boolean, "IsAccent" :: Boolean | r } -> String -> String
-    wrapText x str =
-      let
-        props = Array.catMaybes
-          [ if x."IsItalics" then Just (Tuple "font-style" "italic") else Nothing
-          , if x."IsAccent" then Just (Tuple "color" "red") else Nothing
-          ]
-      in
-        if null props
-          then str
-          else tagOneline "span" props str
+    wrapText x =
+        if x."IsItalics" then tagOneline "i" [] else identity
+        <<< if x."IsAccent" then tagOneline "font" [Tuple "color" "#ff0000"]  else identity
 
     printArticleNode :: ArticleNode -> String
     printArticleNode (ArticleNode x) = printNodeType x

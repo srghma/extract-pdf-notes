@@ -86,7 +86,7 @@ main = do
 
       let
         print :: PdfAnkiTranslator.Print.AnkiFields -> Array String
-        print x = [x.answer, x.body, x.myContext, x.question, x.transcription]
+        print x = [x.question, x.answer, x.transcription, x.myContext, x.body]
 
       csv <- PdfAnkiTranslator.CsvStringify.stringify $ map print $ NonEmptyArray.toArray rendered
 

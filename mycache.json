@@ -1342,5 +1342,141 @@
       "statusText": "OK",
       "status": 200
     }
+  },
+  "{\"method\":\"GET\",\"url\":\"https://translation.googleapis.comlanguage/translate/v2\",\"content\":\"{\\\"from\\\":\\\"de\\\",\\\"to\\\":\\\"ru\\\",\\\"word\\\":\\\"ankommen\\\"}\"}": {
+    "tag": "Left",
+    "value": "There was a problem making the request: AJAX request failed: GET https://translation.googleapis.comlanguage/translate/v2"
+  },
+  "{\"method\":\"POST\",\"url\":\"https://translation.googleapis.comlanguage/translate/v2\",\"content\":\"{\\\"from\\\":\\\"de\\\",\\\"to\\\":\\\"ru\\\",\\\"word\\\":\\\"ankommen\\\"}\"}": {
+    "tag": "Left",
+    "value": "There was a problem making the request: AJAX request failed: POST https://translation.googleapis.comlanguage/translate/v2"
+  },
+  "{\"method\":\"POST\",\"url\":\"https://translation.googleapis.com/language/translate/v2\",\"content\":\"{\\\"from\\\":\\\"de\\\",\\\"to\\\":\\\"ru\\\",\\\"word\\\":\\\"ankommen\\\"}\"}": {
+    "tag": "Right",
+    "value": {
+      "body": {
+        "error": {
+          "code": 400,
+          "message": "Missing required field target",
+          "errors": [
+            {
+              "message": "Missing required field target",
+              "reason": "invalid"
+            }
+          ],
+          "status": "INVALID_ARGUMENT"
+        }
+      },
+      "headers": [
+        [
+          "vary",
+          "X-Origin, Referer, Origin,Accept-Encoding"
+        ],
+        [
+          "content-type",
+          "application/json; charset=UTF-8"
+        ],
+        [
+          "date",
+          "Mon, 21 Dec 2020 10:58:54 GMT"
+        ],
+        [
+          "server",
+          "ESF"
+        ],
+        [
+          "cache-control",
+          "private"
+        ],
+        [
+          "x-xss-protection",
+          "0"
+        ],
+        [
+          "x-frame-options",
+          "SAMEORIGIN"
+        ],
+        [
+          "x-content-type-options",
+          "nosniff"
+        ],
+        [
+          "alt-svc",
+          "h3-29=\":443\"; ma=2592000,h3-T051=\":443\"; ma=2592000,h3-Q050=\":443\"; ma=2592000,h3-Q046=\":443\"; ma=2592000,h3-Q043=\":443\"; ma=2592000,quic=\":443\"; ma=2592000; v=\"46,43\""
+        ],
+        [
+          "accept-ranges",
+          "none"
+        ],
+        [
+          "transfer-encoding",
+          "chunked"
+        ]
+      ],
+      "statusText": "Bad Request",
+      "status": 400
+    }
+  },
+  "{\"method\":\"POST\",\"url\":\"https://translation.googleapis.com/language/translate/v2\",\"content\":\"{\\\"source\\\":\\\"ru\\\",\\\"target\\\":\\\"de\\\",\\\"q\\\":\\\"ankommen\\\"}\"}": {
+    "tag": "Right",
+    "value": {
+      "body": {
+        "data": {
+          "translations": [
+            {
+              "translatedText": "glauben"
+            }
+          ]
+        }
+      },
+      "headers": [
+        [
+          "content-type",
+          "application/json; charset=UTF-8"
+        ],
+        [
+          "vary",
+          "X-Origin, Referer, Origin,Accept-Encoding"
+        ],
+        [
+          "date",
+          "Mon, 21 Dec 2020 11:03:00 GMT"
+        ],
+        [
+          "server",
+          "ESF"
+        ],
+        [
+          "cache-control",
+          "private"
+        ],
+        [
+          "x-xss-protection",
+          "0"
+        ],
+        [
+          "x-frame-options",
+          "SAMEORIGIN"
+        ],
+        [
+          "x-content-type-options",
+          "nosniff"
+        ],
+        [
+          "alt-svc",
+          "h3-29=\":443\"; ma=2592000,h3-T051=\":443\"; ma=2592000,h3-Q050=\":443\"; ma=2592000,h3-Q046=\":443\"; ma=2592000,h3-Q043=\":443\"; ma=2592000,quic=\":443\"; ma=2592000; v=\"46,43\""
+        ],
+        [
+          "accept-ranges",
+          "none"
+        ],
+        [
+          "transfer-encoding",
+          "chunked"
+        ]
+      ],
+      "statusText": "OK",
+      "status": 200
+    }
   }
 }

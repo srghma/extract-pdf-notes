@@ -17,6 +17,7 @@ import PdfAnkiTranslator.Languages
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import PdfAnkiTranslator.Lingolive.Types
+import PdfAnkiTranslator.GoogleTranslate.Translate as PdfAnkiTranslator.GoogleTranslate.Translate
 
 -- ./extract_notes.sh | spago run --main PdfAnkiTranslator.Main --node-args '--cache ./mycache.json'
 
@@ -41,7 +42,8 @@ main = do
 
     PdfAnkiTranslator.AffjaxCache.withCache config.cache \cache -> do
       let text = "ankommen"
-      (result :: NonEmptyArray ArticleModel) <- PdfAnkiTranslator.Lingolive.Actions.Translation.translation
+
+      (abbyyResult :: NonEmptyArray ArticleModel) <- PdfAnkiTranslator.Lingolive.Actions.Translation.translation
         { accessKey: abbyyAccessKey
         , requestFn: PdfAnkiTranslator.AffjaxCache.requestWithCache cache
         }
@@ -50,4 +52,17 @@ main = do
         , dstLang: Russian
         }
         >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Translation.printError text) pure
-      traceM result
+
+      traceM abbyyResult
+
+      (googleResult :: NonEmptyArray String) <- PdfAnkiTranslator.GoogleTranslate.Translate.request
+        { accessKey: config.google_translate_access_key
+        , requestFn: PdfAnkiTranslator.AffjaxCache.requestWithCache cache
+        }
+        { q: text
+        , target: German
+        , source: Russian
+        }
+        >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError text) pure
+
+      traceM googleResult

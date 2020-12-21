@@ -24,7 +24,7 @@ import Data.Array.NonEmpty as NonEmptyArray
 
 decodeNodeType_Text :: forall r. STObject r Json -> ExceptT JsonDecodeError (ST r) NodeType_Text
 decodeNodeType_Text stobj = do
-  isItalics <- (spy "stobj" stobj) `getFieldAndPop` "IsItalics"
+  isItalics <- stobj `getFieldAndPop` "IsItalics"
   isAccent <- stobj `getFieldAndPop` "IsAccent"
   text <- stobj `getFieldAndPop` "Text"
   isOptional <- stobj `getFieldAndPop` "IsOptional"

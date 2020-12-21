@@ -40,7 +40,7 @@ printError e = "On auth: " <>
 authenticate :: Config -> Aff (Either Error String)
 authenticate config =
   Affjax.request
-  ( spy "affjax req" $ Affjax.defaultRequest
+  ( Affjax.defaultRequest
     { method = Left POST
     , url = serviceUrl <> "/api/v1.1/authenticate"
     , content = Nothing
@@ -49,7 +49,7 @@ authenticate config =
     }
   )
   <#> either (Left <<< Error__AffjaxError) \resp ->
-      if (spy "auth resp " resp).status /= StatusCode 200
+      if resp.status /= StatusCode 200
         then Left $ Error__InvalidStatus resp.statusText
         else NonEmptyString.fromString resp.body # note Error__Empty <#> NonEmptyString.toString
         -- | else lmap Error__JsonDecodeError (decodeNonEmptyString (spy "auth body " resp.body) <#> NonEmptyString.toString)

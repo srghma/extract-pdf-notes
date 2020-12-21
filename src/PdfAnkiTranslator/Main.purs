@@ -12,9 +12,13 @@ import Data.Argonaut.Decode.Decoders as Decoders
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Traversable (for)
+import Effect.Class.Console (log)
+import Node.Encoding (Encoding(..))
+import Node.FS.Aff as Node.FS.Aff
 import Options.Applicative as Options.Applicative
 import PdfAnkiTranslator.AffjaxCache as PdfAnkiTranslator.AffjaxCache
 import PdfAnkiTranslator.Config as PdfAnkiTranslator.Config
+import PdfAnkiTranslator.CsvStringify as PdfAnkiTranslator.CsvStringify
 import PdfAnkiTranslator.GoogleTranslate.Translate as PdfAnkiTranslator.GoogleTranslate.Translate
 import PdfAnkiTranslator.Input (InputElement)
 import PdfAnkiTranslator.Input as PdfAnkiTranslator.Input
@@ -45,7 +49,7 @@ main = do
     -- | traceM abbyyAccessKey
 
     PdfAnkiTranslator.AffjaxCache.withCache config.cache \cache -> do
-      rendered <- for input \inputElement -> do
+      (rendered :: NonEmptyArray PdfAnkiTranslator.Print.AnkiFields) <- for input \inputElement -> do
         (abbyyResult :: NonEmptyArray ArticleModel) <- PdfAnkiTranslator.Lingolive.Actions.Translation.translation
           { accessKey: abbyyAccessKey
           , requestFn: PdfAnkiTranslator.AffjaxCache.requestWithCache cache
@@ -78,4 +82,15 @@ main = do
 
         pure renderedWord
 
-      traceM rendered
+      -- | traceM rendered
+
+      let
+        print :: PdfAnkiTranslator.Print.AnkiFields -> Array String
+        print x = [x.answer, x.body, x.myContext, x.question, x.transcription]
+
+      csv <- PdfAnkiTranslator.CsvStringify.stringify $ map print $ NonEmptyArray.toArray rendered
+
+      -- | traceM csv
+
+      -- | log csv
+      Node.FS.Aff.writeTextFile UTF8 "./output.csv" csv

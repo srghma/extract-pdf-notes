@@ -58,7 +58,7 @@ printError word e = "On abbyy translate of word " <> show word <> ": " <>
 translation :: Config -> Input -> Aff (Either Error (NonEmptyArray ArticleModel))
 translation config input =
   config.requestFn
-  ( spy "affjax req" $ Affjax.defaultRequest
+  ( Affjax.defaultRequest
     { method = Left GET
     , url = serviceUrl <> "/api/v1/Translation?" <> printQuery
             [ Tuple "text" input.text
@@ -71,6 +71,10 @@ translation config input =
     }
   )
   <#> either (Left <<< Error__AffjaxError) \resp ->
-      if (spy "auth resp " resp).status /= StatusCode 200
+      if resp.status /= StatusCode 200
         then Left $ Error__InvalidStatus resp.statusText
-        else lmap Error__JsonDecodeError (PdfAnkiTranslator.Lingolive.Decoders.decodeArticleModels (spy "auth body " resp.body))
+        else lmap Error__JsonDecodeError
+          (PdfAnkiTranslator.Lingolive.Decoders.decodeArticleModels
+            ( resp.body
+            )
+          )

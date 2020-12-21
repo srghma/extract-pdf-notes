@@ -78,7 +78,7 @@ request config input = request' config input <#> map responseToWords
 request' :: Config -> Input -> Aff (Either Error Response)
 request' config input =
   config.requestFn
-  ( spy "affjax req" $ Affjax.defaultRequest
+  ( Affjax.defaultRequest
     { method = Left POST
     , url = serviceUrl <> "/language/translate/v2"
     , content = Just $ Json $ encodeJson $ Object.fromHomogeneous
@@ -91,6 +91,6 @@ request' config input =
     }
   )
   <#> either (Left <<< Error__AffjaxError) \resp ->
-      if (spy "google req resp " resp).status /= StatusCode 200
+      if resp.status /= StatusCode 200
         then Left $ Error__InvalidStatus resp.statusText
-        else lmap Error__JsonDecodeError (Data.Codec.decode responseCodec (spy "auth body " resp.body))
+        else lmap Error__JsonDecodeError (Data.Codec.decode responseCodec resp.body)

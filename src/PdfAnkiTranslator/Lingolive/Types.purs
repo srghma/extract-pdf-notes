@@ -29,7 +29,7 @@ derive newtype instance ordNodeType_Text :: Ord NodeType_Text
 ----------
 newtype NodeType_Example
   = NodeType_Example
-  { "Markup" :: Array NodeType_Text
+  { "Markup" :: Array NodeType -- Text or Abbrev
   , "IsOptional" :: Boolean
   }
 
@@ -107,11 +107,13 @@ data NodeType
   -- |   {
   -- |   }
   | NodeType__CardRefs -- 8
-  -- | {
-  -- | }
+    { "IsOptional" :: Boolean
+    , "Items" :: Array NodeType
+    }
   | NodeType__CardRefItem -- 9
-  -- | {
-  -- | }
+    { "IsOptional" :: Boolean
+    , "Markup" :: Array NodeType
+    }
   | NodeType__CardRef -- 10
     { "Dictionary" :: String
     , "ArticleId" :: String

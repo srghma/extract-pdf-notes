@@ -53,7 +53,7 @@ data Error
   | Error__InvalidStatus String
   | Error__JsonDecodeError JsonDecodeError
 
-printError q e = "On translate of q " <> show q <> ": " <>
+printError q e = "On google translate of q " <> show q <> ": " <>
   case e of
        Error__AffjaxError affjaxError ->  Affjax.printError affjaxError
        Error__InvalidStatus status -> status

@@ -32,8 +32,8 @@ findTranscriptionFromBody = fromMaybe "" <<< findMap \(ArticleModel articleModel
            NodeType__Text _ -> Nothing
            NodeType__List x -> findMap findNodeType_ListItem x."Items"
            NodeType__Examples x -> Nothing
-           NodeType__CardRefs -> Nothing
-           NodeType__CardRefItem -> Nothing
+           NodeType__CardRefs _ -> Nothing
+           NodeType__CardRefItem _ -> Nothing
            NodeType__CardRef _ -> Nothing
            NodeType__Abbrev _ -> Nothing
            NodeType__Caption -> Nothing
@@ -77,8 +77,8 @@ printBodyFromAbbyy = String.joinWith "\n" <<< map printArticleModel <<< NonEmpty
         NodeType__Text x -> printNodeType_Text x
         NodeType__List x -> tagMultiLine "ul" [] (map printNodeType_ListItem x."Items")
         NodeType__Examples x -> String.joinWith "\n" $ map printNodeType_ExampleItem x."Items"
-        NodeType__CardRefs -> ""
-        NodeType__CardRefItem -> ""
+        NodeType__CardRefs _ -> ""
+        NodeType__CardRefItem _ -> ""
         NodeType__CardRef _ -> ""
         NodeType__Abbrev x -> x."FullText"
         NodeType__Caption -> ""
@@ -93,7 +93,7 @@ printBodyFromAbbyy = String.joinWith "\n" <<< map printArticleModel <<< NonEmpty
         printNodeType_ExampleItem (NodeType_ExampleItem x) = String.joinWith " " $ map printNodeType_Example x."Markup"
 
         printNodeType_Example :: NodeType_Example -> String
-        printNodeType_Example (NodeType_Example x) = String.joinWith "" $ map printNodeType_Text x."Markup"
+        printNodeType_Example (NodeType_Example x) = String.joinWith "" $ map printNodeType x."Markup"
 
 printArticleModel ::
   { fromAbbyy           :: NonEmptyArray ArticleModel

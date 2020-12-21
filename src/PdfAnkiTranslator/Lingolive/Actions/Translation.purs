@@ -49,7 +49,7 @@ toQuery = unsafeCoerce
 printQuery :: Array (Tuple String String) -> String
 printQuery = Object.fromFoldable >>> toQuery >>> Node.URL.toQueryString
 
-printError word e = "On translate of word " <> show word <> ": " <>
+printError word e = "On abbyy translate of word " <> show word <> ": " <>
   case e of
        Error__AffjaxError affjaxError ->  Affjax.printError affjaxError
        Error__InvalidStatus status -> status

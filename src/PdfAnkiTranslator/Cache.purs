@@ -46,7 +46,7 @@ createCacheWithPersist filename = do
       }
     , persist: do
        obj <- liftEffect $ Effect.Ref.read ref
-       Node.FS.Aff.writeTextFile Node.Encoding.UTF8 (stringifyWithIndent 2 $ encodeJson obj) filename
+       Node.FS.Aff.writeTextFile Node.Encoding.UTF8 filename (stringifyWithIndent 2 $ encodeJson obj)
     }
 
 withCache :: String -> (Cache -> Aff Unit) -> Aff Unit

@@ -33,7 +33,7 @@ printArticleModel ::
 printArticleModel input =
   { question:      input.annotation_text -- TODO: print TitleMarkup from abbyy
   , transcription: findTranscriptionFromBody input.fromAbbyy
-  , answer:        String.joinWith ", " input.fromGoogleTranslate
-  , myContext:     sentence <> maybe "" (\x -> " [" <> x <> "]") annotation_content
+  , answer:        String.joinWith ", " (NonEmptyArray.toArray input.fromGoogleTranslate)
+  , myContext:     input.sentence <> maybe "" (\x -> " [" <> x <> "]") input.annotation_content
   , body:          printBodyFromAbbyy input.fromAbbyy
   }

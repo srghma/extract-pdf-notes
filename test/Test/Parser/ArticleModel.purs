@@ -19,15 +19,17 @@ import Test.Spec.Reporter as Test.Spec.Reporter
 import Test.Spec.Runner as Test.Spec.Runner
 import PdfAnkiTranslator.Lingolive.Types
 import PdfAnkiTranslator.Lingolive.Decoders
+import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Array.NonEmpty as NonEmptyArray
 
 type JsonTest
   = { name :: String
-    , actual :: Array ArticleModel
+    , actual :: NonEmptyArray ArticleModel
     }
 
 type JsonTestWithExpected
   = { name :: String
-    , actual :: Array ArticleModel
+    , actual :: NonEmptyArray ArticleModel
     , expected :: String
     }
 

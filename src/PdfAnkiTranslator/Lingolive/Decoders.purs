@@ -18,6 +18,9 @@ import Foreign.Object (Object)
 import Foreign.Object as Object
 import Foreign.Object.ST (STObject)
 import Foreign.Object.ST as STObject
+import PdfAnkiTranslator.Utils
+import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Array.NonEmpty as NonEmptyArray
 
 decodeNodeType_Text :: forall r. STObject r Json -> ExceptT JsonDecodeError (ST r) NodeType_Text
 decodeNodeType_Text stobj = ado
@@ -159,5 +162,5 @@ decodeArticleModel =
               , "Body": body
               }
 
-decodeArticleModels :: Json -> Either JsonDecodeError (Array ArticleModel)
-decodeArticleModels = Decoders.decodeArray decodeArticleModel
+decodeArticleModels :: Json -> Either JsonDecodeError (NonEmptyArray ArticleModel)
+decodeArticleModels = Decoders.decodeNonEmptyArray decodeArticleModel

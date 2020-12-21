@@ -25,9 +25,11 @@ import Node.URL as Node.URL
 import PdfAnkiTranslator.Lingolive.Config
 import PdfAnkiTranslator.Lingolive.Decoders as PdfAnkiTranslator.Lingolive.Decoders
 import Unsafe.Coerce (unsafeCoerce)
+import PdfAnkiTranslator.AffjaxCache as PdfAnkiTranslator.AffjaxCache
 
 type Config
   = { accessKey :: String
+    , requestFn :: Affjax.Request Json -> Aff (Either Affjax.Error (Affjax.Response Json))
     }
 
 type Input
@@ -55,7 +57,7 @@ printError word e = "On translate of word " <> show word <> ": " <>
 
 translation :: Config -> Input -> Aff (Either Error (NonEmptyArray ArticleModel))
 translation config input =
-  Affjax.request
+  config.requestFn
   ( spy "affjax req" $ Affjax.defaultRequest
     { method = Left GET
     , url = serviceUrl <> "/api/v1/Translation?" <> printQuery

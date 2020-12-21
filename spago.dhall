@@ -19,6 +19,7 @@
   , "generics-rep"
   , "optparse"
   , "node-url"
+  , "codec-argonaut"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

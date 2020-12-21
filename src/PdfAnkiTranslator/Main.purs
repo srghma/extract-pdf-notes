@@ -36,12 +36,12 @@ main = do
       >>= Decoders.decodeNonEmptyArray PdfAnkiTranslator.Input.decodeInputElement
       # either (throwError <<< error <<< printJsonDecodeError) pure
 
-    traceM input
+    -- | traceM input
 
     abbyyAccessKey <- PdfAnkiTranslator.Lingolive.Actions.Authenticate.authenticate { apiKey: config.abbyy_api_key }
       >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Authenticate.printError) pure
 
-    traceM abbyyAccessKey
+    -- | traceM abbyyAccessKey
 
     PdfAnkiTranslator.AffjaxCache.withCache config.cache \cache -> do
       let text = "ankommen"
@@ -56,7 +56,7 @@ main = do
         }
         >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Translation.printError text) pure
 
-      traceM abbyyResult
+      -- | traceM abbyyResult
 
       (googleResult :: NonEmptyArray String) <- PdfAnkiTranslator.GoogleTranslate.Translate.request
         { accessKey: config.google_translate_access_key
@@ -68,10 +68,10 @@ main = do
         }
         >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError text) pure
 
-      traceM $ PdfAnkiTranslator.Print.printArticleModel
-        { fromAbbyy:           abbyyResult
-        , fromGoogleTranslate: googleResult
-        , sentence:            (NonEmptyArray.head input).sentence
-        , annotation_text:     (NonEmptyArray.head input).annotation_text
-        , annotation_content:  (NonEmptyArray.head input).annotation_content
-        }
+      let renderedWord = PdfAnkiTranslator.Print.printArticleModel
+            { fromAbbyy:           abbyyResult
+            , fromGoogleTranslate: googleResult
+            , sentence:            (NonEmptyArray.head input).sentence
+            , annotation_text:     (NonEmptyArray.head input).annotation_text
+            , annotation_content:  (NonEmptyArray.head input).annotation_content
+            }

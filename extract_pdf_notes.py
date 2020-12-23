@@ -37,6 +37,23 @@ SUBSTITUTIONS = {
     u'…': '...',
 }
 
+def nearest_outline(outlines, pos):
+    prev = None
+    for o in outlines:
+        if o.pos < pos:
+            prev = o
+        else:
+            break
+    return prev
+
+def format_pos(outlines, annot):
+    apos = annot.getstartpos()
+    o = nearest_outline(outlines, apos) if apos else None
+    if o:
+        return "Page %d (%s)" % (annot.page.pageno + 1, o.title)
+    else:
+        return "Page %d" % (annot.page.pageno + 1)
+
 def strip_and_substitute(text):
   return ''.join([SUBSTITUTIONS.get(c, c) for c in text.strip()])
 
@@ -85,7 +102,7 @@ class RectExtractor(TextConverter):
         self.annots = set()
         # self.sentences = list()
         self.current_sentence = ''
-        self.current_sentence_should_be_added_to_annotations_on_end = set()
+        self.current_sentence_should_be_added_to_these_annotations_on_end = set()
 
     def my_setannots(self, annots):
         self.annots = {a for a in annots if a.boxes}
@@ -109,7 +126,7 @@ class RectExtractor(TextConverter):
         is_end_of_sentence = text == ' ' and self.current_sentence != '' and self.current_sentence[-1] in SENTENCE_END
         is_newline = text == '\n'
 
-        self.current_sentence_should_be_added_to_annotations_on_end.update(hits)
+        self.current_sentence_should_be_added_to_these_annotations_on_end.update(hits)
 
         word_have_started =  len(hits - self._lasthit) > 0
         word_have_ended =    len(self._lasthit - hits) > 0
@@ -138,25 +155,15 @@ class RectExtractor(TextConverter):
             #             "is_newline": is_newline,
             #             "item": item,
             #         })
-            for x in self.current_sentence_should_be_added_to_annotations_on_end:
-              if x.contents is None:
-                annotation_content = None
-              else:
-                annotation_content = ftfy.fix_text(strip_and_substitute(x.contents))
-
-              # print(strip_and_substitute(x.text))
-
-              sentence_and_its_annotations.append(
-                      {
-                          "id":                 ftfy.fix_text(strip_and_substitute(x.text)),
-                          "annotation_text":    ftfy.fix_text(strip_and_substitute(x.text)),
-                          "annotation_content": ftfy.fix_text(strip_and_substitute(annotation_content)),
-                          "sentence":           ftfy.fix_text(strip_and_substitute(self.current_sentence))
-                      })
+            sentence_and_its_annotations.append(
+                {
+                  "sentence":    self.current_sentence,
+                  "annotations": self.current_sentence_should_be_added_to_these_annotations_on_end
+                })
 
             self.current_sentence = ''
 
-            self.current_sentence_should_be_added_to_annotations_on_end = set()
+            self.current_sentence_should_be_added_to_these_annotations_on_end = set()
 
             return
 
@@ -426,23 +433,6 @@ class PrettyPrinter:
                 initial_indent=self.QUOTE_INDENT,
                 subsequent_indent=self.QUOTE_INDENT)
 
-    def nearest_outline(self, pos):
-        prev = None
-        for o in self.outlines:
-            if o.pos < pos:
-                prev = o
-            else:
-                break
-        return prev
-
-    def format_pos(self, annot):
-        apos = annot.getstartpos()
-        o = self.nearest_outline(apos) if apos else None
-        if o:
-            return "Page %d (%s)" % (annot.page.pageno + 1, o.title)
-        else:
-            return "Page %d" % (annot.page.pageno + 1)
-
     # format a Markdown bullet, wrapped as desired
     def format_bullet(self, paras, quotepos=None, quotelen=None):
         # quotepos/quotelen specify the first paragraph (if any) to be formatted
@@ -490,7 +480,7 @@ class PrettyPrinter:
         assert text or comment
 
         # compute the formatted position (and extra bit if needed) as a label
-        label = self.format_pos(annot) + (" " + extra if extra else "") + ":"
+        label = format_pos(self.outlines, annot) + (" " + extra if extra else "") + ":"
 
         # If we have short (single-paragraph, few words) text with a short or no
         # comment, and the text contains no embedded full stops or quotes, then
@@ -723,7 +713,27 @@ def main():
         #     pp.printall(annots, args.output)
 
         # ensure_ascii=False - dont dump with /u0xxx
-        simplejson.dump(sentence_and_its_annotations, args.output, sort_keys=True, indent=2 * ' ', ensure_ascii=False)
+        sentence_and_its_annotations_ = list()
+
+        for sentence_and_its_annotation in sentence_and_its_annotations:
+          for annotation in sentence_and_its_annotation["annotations"]:
+            if annotation.contents is None:
+              annotation_content = None
+            else:
+              annotation_content = ftfy.fix_text(strip_and_substitute(annotation.contents))
+
+            # print(strip_and_substitute(annotation.text))
+
+            sentence_and_its_annotations_.append(
+                    {
+                        "id":                 ftfy.fix_text(strip_and_substitute(annotation.text)),
+                        "annotation_text":    ftfy.fix_text(strip_and_substitute(annotation.text)),
+                        "annotation_content": annotation_content,
+                        "sentence":           ftfy.fix_text(strip_and_substitute(sentence_and_its_annotation["sentence"])),
+                        "position":           format_pos(outlines, annotation)
+                    })
+
+        simplejson.dump(sentence_and_its_annotations_, args.output, sort_keys=True, indent=2 * ' ', ensure_ascii=False)
         # beeprint.pp(.., args.output)
 
     return 0

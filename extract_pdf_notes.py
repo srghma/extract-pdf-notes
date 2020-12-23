@@ -148,9 +148,10 @@ class RectExtractor(TextConverter):
 
               sentence_and_its_annotations.append(
                       {
-                          "sentence":           ftfy.fix_text(strip_and_substitute(self.current_sentence)),
+                          "id":                 ftfy.fix_text(strip_and_substitute(x.text)),
                           "annotation_text":    ftfy.fix_text(strip_and_substitute(x.text)),
-                          "annotation_content": annotation_content
+                          "annotation_content": ftfy.fix_text(strip_and_substitute(annotation_content)),
+                          "sentence":           ftfy.fix_text(strip_and_substitute(self.current_sentence))
                       })
 
             self.current_sentence = ''

@@ -1,6 +1,7 @@
 module PdfAnkiTranslator.Main where
 
 import Data.Argonaut.Decode
+import Data.Exists
 import Foreign
 import PdfAnkiTranslator.Languages
 import PdfAnkiTranslator.Lingolive.Types
@@ -26,6 +27,7 @@ import PdfAnkiTranslator.Lingolive.Actions.Authenticate as PdfAnkiTranslator.Lin
 import PdfAnkiTranslator.Lingolive.Actions.Translation as PdfAnkiTranslator.Lingolive.Actions.Translation
 import PdfAnkiTranslator.Print as PdfAnkiTranslator.Print
 import PdfAnkiTranslator.ReadStdin as PdfAnkiTranslator.ReadStdin
+import Data.Codec.Argonaut as Data.Codec.Argonaut
 
 -- ./extract_notes.sh | spago run --main PdfAnkiTranslator.Main --node-args '--cache ./mycache.json'
 
@@ -50,37 +52,44 @@ main = do
 
     PdfAnkiTranslator.AffjaxCache.withCache config.cache \cache -> do
       (rendered :: NonEmptyArray PdfAnkiTranslator.Print.AnkiFields) <- for input \inputElement -> do
-        (abbyyResult :: NonEmptyArray ArticleModel) <- PdfAnkiTranslator.Lingolive.Actions.Translation.translation
-          { accessKey: abbyyAccessKey
-          , requestFn: PdfAnkiTranslator.AffjaxCache.requestWithCache cache
-          }
-          { text: inputElement.annotation_text
-          , srcLang: German
-          , dstLang: Russian
-          }
-          >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Translation.printError inputElement.annotation_text) pure
+        (abbyyResult :: NonEmptyArray ArticleModel) <- runExists
+          (\cache ->
+            PdfAnkiTranslator.Lingolive.Actions.Translation.translation
+            { accessKey: abbyyAccessKey
+            , requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.json }
+            }
+            { text: inputElement.annotation_text
+            , srcLang: German
+            , dstLang: Russian
+            }
+            >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Translation.printError inputElement.annotation_text) pure
+          )
+          cache
+
+
 
         -- | traceM abbyyResult
 
-        (googleResult :: NonEmptyArray String) <- PdfAnkiTranslator.GoogleTranslate.Translate.request
-          { accessKey: config.google_translate_access_key
-          , requestFn: PdfAnkiTranslator.AffjaxCache.requestWithCache cache
-          }
-          { q: inputElement.annotation_text
-          , source: German
-          , target: Russian
-          }
-          >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError inputElement.annotation_text) pure
+        -- | (googleResult :: NonEmptyArray String) <- PdfAnkiTranslator.GoogleTranslate.Translate.request
+        -- |   { accessKey: config.google_translate_access_key
+        -- |   , requestFn: PdfAnkiTranslator.AffjaxCache.requestWithCache cache
+        -- |   }
+        -- |   { q: inputElement.annotation_text
+        -- |   , source: German
+        -- |   , target: Russian
+        -- |   }
+        -- |   >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError inputElement.annotation_text) pure
 
-        let renderedWord = PdfAnkiTranslator.Print.printArticleModel
-              { fromAbbyy:           abbyyResult
-              , fromGoogleTranslate: googleResult
-              , sentence:            inputElement.sentence
-              , annotation_text:     inputElement.annotation_text
-              , annotation_content:  inputElement.annotation_content
-              }
+        -- | let renderedWord = PdfAnkiTranslator.Print.printArticleModel
+        -- |       { fromAbbyy:           abbyyResult
+        -- |       , fromGoogleTranslate: googleResult
+        -- |       , sentence:            inputElement.sentence
+        -- |       , annotation_text:     inputElement.annotation_text
+        -- |       , annotation_content:  inputElement.annotation_content
+        -- |       }
 
-        pure renderedWord
+        -- | pure renderedWord
+        pure undefined
 
       -- | traceM rendered
 

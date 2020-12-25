@@ -1,28 +1,55 @@
 module PdfAnkiTranslator.AffjaxCache where
 
-import Node.Path
+import Data.Argonaut.Decode
+import Data.Exists
+import Foreign
 import Protolude
 
 import Affjax as Affjax
 import Affjax.RequestBody (RequestBody(..))
 import Affjax.RequestHeader (RequestHeader(..))
 import Affjax.ResponseFormat as Affjax
+import Affjax.ResponseFormat as Affjax.ResponseFormat
 import Affjax.ResponseHeader (ResponseHeader(..))
 import Affjax.StatusCode (StatusCode(..))
 import Data.Argonaut.Core (Json, stringify, stringifyWithIndent)
 import Data.Argonaut.Decode as ArgonautCodecs
+import Data.Argonaut.Decode.Decoders as Decoders
 import Data.Argonaut.Encode (encodeJson)
+import Data.Array.NonEmpty (NonEmptyArray)
+import Data.Array.NonEmpty as NonEmptyArray
+import Data.Codec (Codec)
 import Data.Codec as Data.Codec
 import Data.Codec.Argonaut as Data.Codec.Argonaut
 import Data.Codec.Argonaut.Common as Data.Codec.Argonaut
 import Data.HTTP.Method (unCustomMethod)
 import Data.Profunctor (dimap, wrapIso)
+import Data.Traversable (for)
 import Effect.Aff (bracket)
+import Effect.Class.Console (log)
 import Effect.Ref as Effect.Ref
 import Foreign.Object (Object)
 import Foreign.Object as Object
+import Node.Encoding (Encoding(..))
 import Node.Encoding as Node.Encoding
 import Node.FS.Aff as Node.FS.Aff
+import Options.Applicative as Options.Applicative
+import Unsafe.Coerce (unsafeCoerce)
+
+-- | newtype Foo a = Foo (a -> a)
+
+-- | foo :: Exists Foo
+-- | foo = mkExists (Foo identity)
+
+-- | fooTo :: forall b . (forall r. (forall a. Foo a -> r) -> r) -> b -> b
+-- | -- | fooTo x = x $ \(Foo f) -> f -- Could not match type        a1      with type        b0
+-- | fooTo x = x (\(Foo f) -> unsafeCoerce f)
+
+-- | useFoo :: Foo String -> String
+-- | useFoo (Foo f) =
+
+-- | x :: Int
+-- | x = runExists (\(Foo f) -> f "a") foo
 
 -- because why we nned them?
 type AffjaxResponseWithoutHeaders a =
@@ -46,15 +73,13 @@ fromAffjaxResponseWithoutHeaders x =
   , headers: []
   }
 
-type Cache =
+newtype Cache a = Cache
   { get ::
-      forall a .
       { affjaxRequest :: Affjax.Request a
       , bodyCodec :: Data.Codec.Argonaut.JsonCodec a
       } ->
       Effect (Maybe (Either Affjax.Error (Affjax.Response a)))
   , set ::
-      forall a .
       { affjaxRequest :: Affjax.Request a
       , bodyCodec :: Data.Codec.Argonaut.JsonCodec a
       , response :: Either Affjax.Error (AffjaxResponseWithoutHeaders a)
@@ -73,9 +98,9 @@ affjaxRequestToKey affjaxRequest = stringify $ encodeJson $ Object.fromHomogeneo
             ArrayView f                   -> "ArrayView unsupported"
             Blob blob                     -> "Blob unsupported"
             Document document             -> "Document unsupported"
-            String string                 -> string
             FormData formData             -> "FormData unsupported"
             FormURLEncoded formURLEncoded -> "FormURLEncoded unsupported"
+            String string                 -> string
             Json json                     -> stringify json
       )
       affjaxRequest.content
@@ -114,27 +139,38 @@ codecEitherResponse bodyCodec = Data.Codec.Argonaut.either codecAffjaxError (cod
 -------------------
 
 -- just like affjax request, but only supports Json
-requestWithCache :: Cache -> Affjax.Request Json -> Aff (Either Affjax.Error (Affjax.Response Json))
-requestWithCache cache affjaxRequest =
-  liftEffect (cache.get { affjaxRequest, bodyCodec: Data.Codec.Argonaut.json }) >>=
-    case _ of
-         Nothing -> do
-            response <- Affjax.request affjaxRequest
-            let (response' :: Either Affjax.Error (AffjaxResponseWithoutHeaders Json)) = map toAffjaxResponseWithoutHeaders response
-            liftEffect $ cache.set { affjaxRequest, bodyCodec: Data.Codec.Argonaut.json, response: response' }
-            pure response
-         Just x -> pure x
+requestWithCache
+  :: forall a
+   . { cache :: Cache a
+     , affjaxRequest :: Affjax.Request a
+     , bodyCodec :: Data.Codec.Argonaut.JsonCodec a
+     }
+  -> Aff (Either Affjax.Error (Affjax.Response a))
+requestWithCache
+  { cache: Cache cache
+  , affjaxRequest
+  , bodyCodec
+  } =
+    liftEffect (cache.get { affjaxRequest, bodyCodec }) >>=
+      case _ of
+          Nothing -> do
+              response <- Affjax.request affjaxRequest
+              let (response' :: Either Affjax.Error (AffjaxResponseWithoutHeaders a)) = map toAffjaxResponseWithoutHeaders response
+              liftEffect $ cache.set { affjaxRequest, bodyCodec, response: response' }
+              pure response
+          Just x -> pure x
 
 -------------------
 
 createCacheWithPersist ::
   String ->
   Aff
-  { cache :: Cache
+  { cache :: Exists Cache
+  -- | { cache :: (forall r. (forall a. Cache a -> r) -> r)
   , persist :: Aff Unit
   }
 createCacheWithPersist filename = do
-  (json :: Object Json) <-
+  (initInMemoryContent :: Object Json) <-
     Node.FS.Aff.exists filename >>=
       if _
         then do
@@ -142,24 +178,26 @@ createCacheWithPersist filename = do
           (ArgonautCodecs.parseJson text >>= ArgonautCodecs.decodeJson) # either (throwError <<< error <<< ArgonautCodecs.printJsonDecodeError) pure
         else pure $ Object.empty
 
-  ref <- liftEffect $ Effect.Ref.new json
+  inMemoryCache <- liftEffect $ Effect.Ref.new initInMemoryContent
 
   pure
-    { cache:
-      { get: undefined
-        -- \{ affjaxRequest, bodyCodec } -> do
-          -- | obj <- Effect.Ref.read ref
-          -- | case Object.lookup (affjaxRequestToKey affjaxRequest) obj of
-          -- |      Nothing -> pure Nothing
-          -- |      Just json ->
-          -- |        Data.Codec.decode (codecEitherResponse bodyCodec) json # either (throwError <<< error <<< Data.Codec.Argonaut.printJsonDecodeError) (pure <<< Just)
+    { cache: mkExists $ Cache
+      { get: \{ affjaxRequest, bodyCodec } -> do
+          obj <- Effect.Ref.read inMemoryCache
+          case Object.lookup (affjaxRequestToKey affjaxRequest) obj of
+               Nothing -> pure Nothing
+               Just json ->
+                 json
+                 # Data.Codec.decode (codecEitherResponse bodyCodec)
+                 # map (map fromAffjaxResponseWithoutHeaders)
+                 # either (throwError <<< error <<< Data.Codec.Argonaut.printJsonDecodeError) (pure <<< Just)
       , set: \{ affjaxRequest, bodyCodec, response } ->
-          Effect.Ref.modify_ (Object.insert (affjaxRequestToKey affjaxRequest) (Data.Codec.encode (codecEitherResponse bodyCodec) response)) ref
+        Effect.Ref.modify_ (Object.insert (affjaxRequestToKey affjaxRequest) (Data.Codec.encode (codecEitherResponse bodyCodec) response)) inMemoryCache
       }
     , persist: do
-       obj <- liftEffect $ Effect.Ref.read ref
+       obj <- liftEffect $ Effect.Ref.read inMemoryCache
        Node.FS.Aff.writeTextFile Node.Encoding.UTF8 filename (stringifyWithIndent 2 $ encodeJson obj)
     }
 
-withCache :: String -> (Cache -> Aff Unit) -> Aff Unit
+withCache :: String -> (Exists Cache -> Aff Unit) -> Aff Unit
 withCache filename action = bracket (createCacheWithPersist filename) (\{ persist } -> persist) (\{ cache } -> action cache)

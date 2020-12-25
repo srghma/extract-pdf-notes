@@ -52,44 +52,38 @@ main = do
 
     PdfAnkiTranslator.AffjaxCache.withCache config.cache \cache -> do
       (rendered :: NonEmptyArray PdfAnkiTranslator.Print.AnkiFields) <- for input \inputElement -> do
-        (abbyyResult :: NonEmptyArray ArticleModel) <- runExists
-          (\cache ->
-            PdfAnkiTranslator.Lingolive.Actions.Translation.translation
-            { accessKey: abbyyAccessKey
-            , requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.json }
-            }
-            { text: inputElement.annotation_text
-            , srcLang: German
-            , dstLang: Russian
-            }
-            >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Translation.printError inputElement.annotation_text) pure
-          )
-          cache
-
-
+        (abbyyResult :: NonEmptyArray ArticleModel) <-
+          PdfAnkiTranslator.Lingolive.Actions.Translation.translation
+          { accessKey: abbyyAccessKey
+          , requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.json }
+          }
+          { text: inputElement.annotation_text
+          , srcLang: German
+          , dstLang: Russian
+          }
+          >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Translation.printError inputElement.annotation_text) pure
 
         -- | traceM abbyyResult
 
-        -- | (googleResult :: NonEmptyArray String) <- PdfAnkiTranslator.GoogleTranslate.Translate.request
-        -- |   { accessKey: config.google_translate_access_key
-        -- |   , requestFn: PdfAnkiTranslator.AffjaxCache.requestWithCache cache
-        -- |   }
-        -- |   { q: inputElement.annotation_text
-        -- |   , source: German
-        -- |   , target: Russian
-        -- |   }
-        -- |   >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError inputElement.annotation_text) pure
+        (googleResult :: NonEmptyArray String) <- PdfAnkiTranslator.GoogleTranslate.Translate.request
+          { accessKey: config.google_translate_access_key
+          , requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.json }
+          }
+          { q: inputElement.annotation_text
+          , source: German
+          , target: Russian
+          }
+          >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError inputElement.annotation_text) pure
 
-        -- | let renderedWord = PdfAnkiTranslator.Print.printArticleModel
-        -- |       { fromAbbyy:           abbyyResult
-        -- |       , fromGoogleTranslate: googleResult
-        -- |       , sentence:            inputElement.sentence
-        -- |       , annotation_text:     inputElement.annotation_text
-        -- |       , annotation_content:  inputElement.annotation_content
-        -- |       }
+        let renderedWord = PdfAnkiTranslator.Print.printArticleModel
+              { fromAbbyy:           abbyyResult
+              , fromGoogleTranslate: googleResult
+              , sentence:            inputElement.sentence
+              , annotation_text:     inputElement.annotation_text
+              , annotation_content:  inputElement.annotation_content
+              }
 
-        -- | pure renderedWord
-        pure undefined
+        pure renderedWord
 
       -- | traceM rendered
 

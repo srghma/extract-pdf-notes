@@ -87,6 +87,10 @@ newtype Cache a = Cache
       Effect Unit
   }
 
+-- TODO: is it SAFE?
+hackCache :: forall a . Exists Cache -> Cache a
+hackCache = unsafeCoerce
+
 affjaxRequestToKey :: forall a . Affjax.Request a -> String
 affjaxRequestToKey affjaxRequest = stringify $ encodeJson $ Object.fromHomogeneous
   { method: either show unCustomMethod affjaxRequest.method
@@ -141,24 +145,25 @@ codecEitherResponse bodyCodec = Data.Codec.Argonaut.either codecAffjaxError (cod
 -- just like affjax request, but only supports Json
 requestWithCache
   :: forall a
-   . { cache :: Cache a
+   . { cache :: Exists Cache
      , affjaxRequest :: Affjax.Request a
      , bodyCodec :: Data.Codec.Argonaut.JsonCodec a
      }
   -> Aff (Either Affjax.Error (Affjax.Response a))
 requestWithCache
-  { cache: Cache cache
+  { cache
   , affjaxRequest
   , bodyCodec
   } =
-    liftEffect (cache.get { affjaxRequest, bodyCodec }) >>=
-      case _ of
-          Nothing -> do
-              response <- Affjax.request affjaxRequest
-              let (response' :: Either Affjax.Error (AffjaxResponseWithoutHeaders a)) = map toAffjaxResponseWithoutHeaders response
-              liftEffect $ cache.set { affjaxRequest, bodyCodec, response: response' }
-              pure response
-          Just x -> pure x
+    let ((Cache cache) :: Cache a) = hackCache cache
+     in liftEffect (cache.get { affjaxRequest, bodyCodec }) >>=
+        case _ of
+            Nothing -> do
+                response <- Affjax.request affjaxRequest
+                let (response' :: Either Affjax.Error (AffjaxResponseWithoutHeaders a)) = map toAffjaxResponseWithoutHeaders response
+                liftEffect $ cache.set { affjaxRequest, bodyCodec, response: response' }
+                pure response
+            Just x -> pure x
 
 -------------------
 
@@ -166,7 +171,6 @@ createCacheWithPersist ::
   String ->
   Aff
   { cache :: Exists Cache
-  -- | { cache :: (forall r. (forall a. Cache a -> r) -> r)
   , persist :: Aff Unit
   }
 createCacheWithPersist filename = do

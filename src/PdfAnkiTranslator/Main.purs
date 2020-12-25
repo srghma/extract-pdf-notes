@@ -10,27 +10,46 @@ import Protolude
 import Affjax as Affjax
 import Affjax.ResponseFormat as Affjax.ResponseFormat
 import Data.Argonaut.Decode.Decoders as Decoders
+import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
+import Data.Codec.Argonaut as Data.Codec.Argonaut
+import Data.Foldable (oneOfMap)
+import Data.Map (Map)
+import Data.Map as Map
+import Data.Set (Set)
+import Data.Set as Set
+import Data.String (Pattern(..))
+import Data.String as String
 import Data.Traversable (for)
+import Data.TraversableWithIndex (forWithIndex)
 import Effect.Class.Console (log)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff as Node.FS.Aff
 import Options.Applicative as Options.Applicative
 import PdfAnkiTranslator.AffjaxCache as PdfAnkiTranslator.AffjaxCache
+import PdfAnkiTranslator.Cambridge.Transcription as PdfAnkiTranslator.Cambridge.Transcription
 import PdfAnkiTranslator.Config as PdfAnkiTranslator.Config
 import PdfAnkiTranslator.CsvStringify as PdfAnkiTranslator.CsvStringify
 import PdfAnkiTranslator.GoogleTranslate.Translate as PdfAnkiTranslator.GoogleTranslate.Translate
-import PdfAnkiTranslator.Input (InputElement)
+import PdfAnkiTranslator.Input (InputElement, UniqInputElementValue)
 import PdfAnkiTranslator.Input as PdfAnkiTranslator.Input
 import PdfAnkiTranslator.Lingolive.Actions.Authenticate as PdfAnkiTranslator.Lingolive.Actions.Authenticate
 import PdfAnkiTranslator.Lingolive.Actions.Translation as PdfAnkiTranslator.Lingolive.Actions.Translation
 import PdfAnkiTranslator.Print as PdfAnkiTranslator.Print
 import PdfAnkiTranslator.ReadStdin as PdfAnkiTranslator.ReadStdin
-import Data.Codec.Argonaut as Data.Codec.Argonaut
-import PdfAnkiTranslator.Cambridge.Transcription as PdfAnkiTranslator.Cambridge.Transcription
 
 -- ./extract_notes.sh | spago run --main PdfAnkiTranslator.Main --node-args '--cache ./mycache.json'
+
+wordVariants :: NonEmptyArray ArticleModel -> NonEmptyArray String
+wordVariants = NonEmptyArray.nub <<< map
+  ( String.toLower
+  <<< strip String.stripSuffix
+  <<< strip String.stripPrefix
+  <<< \(ArticleModel articleModel) -> articleModel."Title"
+  )
+  where
+    strip f x = f (Pattern "*") x # fromMaybe x
 
 main :: Effect Unit
 main = do
@@ -40,8 +59,8 @@ main = do
     inputJsonString <- PdfAnkiTranslator.ReadStdin.readStdin
       >>= maybe (throwError $ error "Expected stdin") pure
 
-    (input :: NonEmptyArray InputElement) <- parseJson inputJsonString
-      >>= Decoders.decodeNonEmptyArray PdfAnkiTranslator.Input.decodeInputElement
+    (input :: Map String UniqInputElementValue) <- parseJson inputJsonString
+      >>= PdfAnkiTranslator.Input.decodeInput
       # either (throwError <<< error <<< printJsonDecodeError) pure
 
     -- | traceM input
@@ -52,60 +71,73 @@ main = do
     -- | traceM abbyyAccessKey
 
     PdfAnkiTranslator.AffjaxCache.withCache config.cache \cache -> do
-      (rendered :: NonEmptyArray PdfAnkiTranslator.Print.AnkiFields) <- for input \inputElement -> do
-        (abbyyResult :: NonEmptyArray ArticleModel) <-
-          PdfAnkiTranslator.Lingolive.Actions.Translation.translation
-          { accessKey: abbyyAccessKey
-          , requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.json }
-          }
-          { text: inputElement.annotation_text
-          , srcLang: German
-          , dstLang: Russian
-          }
-          >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Translation.printError inputElement.annotation_text) pure
+      (mapRendered :: Map String PdfAnkiTranslator.Print.AnkiFields) <- forWithIndex input \annotation_text_id inputElement -> do
+          (fromAbbyy :: NonEmptyArray ArticleModel) <-
+            PdfAnkiTranslator.Lingolive.Actions.Translation.translation
+            { accessKey: abbyyAccessKey
+            , requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.json }
+            }
+            { text: inputElement.annotation_text
+            , srcLang: German
+            , dstLang: Russian
+            }
+            >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Translation.printError inputElement.annotation_text) pure
 
-        traceM { abbyyResult }
+          let (wordVariants :: NonEmptyArray String) = wordVariants fromAbbyy
 
-        (googleResult :: NonEmptyArray String) <- PdfAnkiTranslator.GoogleTranslate.Translate.request
-          { accessKey: config.google_translate_access_key
-          , requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.json }
-          }
-          { q: inputElement.annotation_text
-          , source: German
-          , target: Russian
-          }
-          >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError inputElement.annotation_text) pure
+          traceM { fromAbbyy, wordVariants }
 
-        traceM { googleResult }
+          (fromGoogleTranslate :: NonEmptyArray String) <-
+            PdfAnkiTranslator.GoogleTranslate.Translate.request
+            { accessKey: config.google_translate_access_key
+            , requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.json }
+            }
+            { q: inputElement.annotation_text
+            , source: German
+            , target: Russian
+            }
+            >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError inputElement.annotation_text) pure
 
-        (cambridgeResult :: String) <- PdfAnkiTranslator.Cambridge.Transcription.transcription
-          { requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.string }
-          }
-          { text: inputElement.annotation_text
-          , srcLang: German
-          , dstLang: Russian
-          }
-          >>= either (throwError <<< error <<< PdfAnkiTranslator.Cambridge.Transcription.printError inputElement.annotation_text) pure
+          traceM { fromGoogleTranslate }
 
-        traceM { cambridgeResult }
-
-        let renderedWord = PdfAnkiTranslator.Print.printArticleModel
-              { fromAbbyy:           abbyyResult
-              , fromGoogleTranslate: googleResult
-              , sentence:            inputElement.sentence
-              , annotation_text:     inputElement.annotation_text
-              , annotation_content:  inputElement.annotation_content
+          (fromCambridgeTranscription :: Maybe String) <-
+            oneOfMap
+            ( \wordVariant ->
+              PdfAnkiTranslator.Cambridge.Transcription.transcription
+              { requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.string }
               }
+              { text: wordVariant
+              , srcLang: German
+              , dstLang: Russian
+              }
+              >>= either (throwError <<< error <<< PdfAnkiTranslator.Cambridge.Transcription.printError wordVariant) pure
+            )
+            wordVariants
 
-        pure renderedWord
+          traceM { fromCambridgeTranscription }
+
+          -- | _ <- throwError $ error $ "No translations found for " <> show wordVariants
+
+          let renderedWord = PdfAnkiTranslator.Print.printArticleModel
+                { fromAbbyy
+                , fromGoogleTranslate
+                , fromCambridgeTranscription
+                , sentences:           inputElement.sentences
+                , annotation_text:     inputElement.annotation_text
+                , annotation_text_id
+                }
+
+          pure renderedWord
+
+      let (rendered :: Array PdfAnkiTranslator.Print.AnkiFields) = Array.fromFoldable mapRendered
 
       traceM rendered
 
       let
         print :: PdfAnkiTranslator.Print.AnkiFields -> Array String
-        print x = [x.question, x.answer, x.transcription, x.myContext, x.body]
+        print x = [x.id, x.question, x.answer, x.transcription, x.myContext, x.body]
 
-      csv <- PdfAnkiTranslator.CsvStringify.stringify $ map print $ NonEmptyArray.toArray rendered
+      csv <- PdfAnkiTranslator.CsvStringify.stringify $ map print rendered
 
       -- | traceM csv
 

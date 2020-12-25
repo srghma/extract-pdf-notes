@@ -11,16 +11,17 @@ import Data.String as String
 import PdfAnkiTranslator.SimpleXMLWithIndentation
 
 type AnkiFields =
-  { question      :: String -- orig lang
-  , transcription :: String
+  { id            :: String -- orig lang, from pdf
+  , question      :: String -- orig lang, changed by user
   , answer        :: String -- my lang (using google translate)
+  , transcription :: String
   , myContext     :: String
   , body          :: String -- examples, etc.
   }
 
 -- from "Body"
-findTranscriptionFromBody :: NonEmptyArray ArticleModel -> String -- maybe empty
-findTranscriptionFromBody = fromMaybe "" <<< findMap \(ArticleModel articleModel) ->
+findTranscriptionFromBody :: NonEmptyArray ArticleModel -> Maybe String
+findTranscriptionFromBody = findMap \(ArticleModel articleModel) ->
   flip findMap articleModel."Body" \(ArticleNode nodeType) -> findFromNodeType nodeType
   where
     findFromNodeType :: NodeType -> Maybe String
@@ -91,15 +92,26 @@ printBodyFromAbbyy = String.joinWith "\n" <<< map printArticleModel <<< NonEmpty
 printArticleModel ::
   { fromAbbyy           :: NonEmptyArray ArticleModel
   , fromGoogleTranslate :: NonEmptyArray String
-  , sentence            :: String
-  , annotation_text     :: String
-  , annotation_content  :: Maybe String
+  , fromCambridgeTranscription :: Maybe String
+  , sentences :: Array
+    { sentence :: String
+    , position :: String
+    , annotation_content :: Maybe String
+    }
+  , annotation_text :: String
+  , annotation_text_id :: String
   } ->
   AnkiFields
 printArticleModel input =
-  { question:      input.annotation_text -- TODO: print TitleMarkup from abbyy
-  , transcription: findTranscriptionFromBody input.fromAbbyy
-  , answer:        String.joinWith ", " (NonEmptyArray.toArray input.fromGoogleTranslate)
-  , myContext:     input.sentence <> maybe "" (\x -> " [" <> x <> "]") input.annotation_content
-  , body:          printBodyFromAbbyy input.fromAbbyy
+  { id: input.annotation_text_id
+  , question: input.annotation_text -- TODO: print TitleMarkup from abbyy
+  , transcription: String.joinWith ", " $ Array.catMaybes [ findTranscriptionFromBody input.fromAbbyy, input.fromCambridgeTranscription ]
+  , answer: String.joinWith ", " (NonEmptyArray.toArray input.fromGoogleTranslate)
+  , myContext:
+    String.joinWith "\n"
+    $ input.sentences
+    <#> \sentence ->
+      String.joinWith " "
+      $ Array.catMaybes [ Just sentence.sentence, Just sentence.position, sentence.annotation_content ]
+  , body: printBodyFromAbbyy input.fromAbbyy
   }

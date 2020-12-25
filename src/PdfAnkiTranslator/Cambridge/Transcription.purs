@@ -48,7 +48,6 @@ languageToLanguageId =
 data Error
   = Error__AffjaxError Affjax.Error
   | Error__InvalidStatus String
-  | Error__WordOnPageNotFound
 
 toQuery :: Object String -> Query
 toQuery = unsafeCoerce
@@ -60,14 +59,14 @@ printError word e = "On cambridge translate of word " <> show word <> ": " <>
   case e of
        Error__AffjaxError affjaxError ->  Affjax.printError affjaxError
        Error__InvalidStatus status -> status
-       Error__WordOnPageNotFound -> "Error__WordOnPageNotFound"
 
-transcription :: Config -> Input -> Aff (Either Error String)
+transcription :: Config -> Input -> Aff (Either Error (Maybe String))
 transcription config input =
   config.requestFn
   ( Affjax.defaultRequest
     { method = Left GET
-    , url = "https://dictionary.cambridge.org/dictionary/" <> languageToLanguageId input.srcLang <> "-" <> languageToLanguageId input.dstLang <> "/" <> input.text
+    -- | https://dictionary.cambridge.org/dictionary/german-english/abgasen
+    , url = spy "url" $ "https://dictionary.cambridge.org/dictionary/" <> languageToLanguageId input.srcLang <> "-" <> languageToLanguageId input.dstLang <> "/" <> input.text
     , content = Nothing
     , responseFormat = Affjax.ResponseFormat.string
     }
@@ -76,9 +75,10 @@ transcription config input =
       if resp.status /= StatusCode 200
         then Left $ Error__InvalidStatus resp.statusText
         else
-          case Regex.match (Regex.unsafeRegex """<span class="ipa dipa">([^<]+)<\/span>""" Regex.noFlags) resp.body of
-               Nothing -> Left Error__WordOnPageNotFound
+        -- spy "resp.body"
+          case Regex.match (Regex.unsafeRegex """<span class="ipa dipa">([^<]+)<\/span>""" Regex.noFlags) ( resp.body) of
+               Nothing -> Right Nothing
                Just matches ->
-                 case NonEmptyArray.head matches of
-                      Nothing -> Left Error__WordOnPageNotFound
-                      Just firstGroup -> Right firstGroup
+                 NonEmptyArray.index matches 1
+                 # join
+                 # Right

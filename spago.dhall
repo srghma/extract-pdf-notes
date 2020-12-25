@@ -21,6 +21,7 @@
   , "node-url"
   , "codec-argonaut"
   , "yarn"
+  , "unique-lists"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

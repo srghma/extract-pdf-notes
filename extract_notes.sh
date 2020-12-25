@@ -14,7 +14,42 @@ docker run \
   -v $PWD/extract_pdf_notes.py:/usr/bin/extract_pdf_notes \
   --user $(id -u):$(id -u) \
   extract_pdf_notes \
-  /usr/bin/extract_pdf_notes /myfile.pdf
+  /usr/bin/extract_pdf_notes /myfile.pdf > /tmp/asdf
+
+sd 'ersu chen' 'versuchen' /tmp/asdf
+sd '"annotation_text": "erzählte"' '"annotation_text": "erzählen"' /tmp/asdf
+sd 'v<strong>ersu</strong>-<strong>chen</strong>' '<strong>versuchen</strong>' /tmp/asdf
+sd '"annotation_text": "geses"' '"annotation_text": "gesessen"' /tmp/asdf
+sd '<strong>geses-</strong>sen' '<strong>gesessen</strong>' /tmp/asdf
+sd '"annotation_text": "mochte"' '"annotation_text": "mögen"' /tmp/asdf
+sd '"annotation_text": "wusst"' '"annotation_text": "wissen"' /tmp/asdf
+sd '<strong>wusst</strong>e' '<strong>wusste</strong>' /tmp/asdf
+sd '"annotation_text": "zeigte"' '"annotation_text": "zeigen"' /tmp/asdf
+sd 'Blot-wosch' 'Blotwosch' /tmp/asdf
+sd 'Minu-ten' 'Minuten' /tmp/asdf
+sd '"annotation_text": "dritthöchste"' '"annotation_text": "dritt"' /tmp/asdf
+sd '<strong>dritthöchste</strong>' '<strong>dritthöchste (по высоте)</strong>' /tmp/asdf
+# cat /tmp/asdf | jq 'unique_by(.annotation_text_id)' > /tmp/asdf2
+# mv -f /tmp/asdf2 /tmp/asdf
+# sd '"sentence": "\"Willst du ein <strong>biss-"' '"sentence": "\"Willst du ein <strong>bisschen</strong> <strong>spazieren</strong> gehen?\""' /tmp/asdf
+
+# sd -s '{
+#     "annotation_content": null,
+#     "annotation_text": "bisschen",
+#     "annotation_text_id": "bisschen",
+#     "position": "Page 17 (2. Sechs Euro pro Nacht)",
+#     "sentence": "\"Willst du ein <strong>biss-"
+#   },
+#   {
+#     "annotation_content": null,
+#     "annotation_text": "bisschen",
+#     "annotation_text_id": "bisschen",
+#     "position": "Page 17 (2. Sechs Euro pro Nacht)",
+#     "sentence": "<strong>chen</strong> <strong>spazieren</strong> gehen?\""
+#   },' 'Minuten' /tmp/asdf
+
+# cat /tmp/asdf | jq 'sort_by(.annotation_text_id|ascii_downcase)'
+
   # --progress -o "/Documents/$filename-annotations.txt"
 
 # input_file=${1}

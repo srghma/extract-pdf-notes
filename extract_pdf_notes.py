@@ -726,7 +726,7 @@ def main():
 
             sentence_and_its_annotations_.append(
                     {
-                        "id":                 ftfy.fix_text(strip_and_substitute(annotation.text)),
+                        "annotation_text_id": ftfy.fix_text(strip_and_substitute(annotation.text)),
                         "annotation_text":    ftfy.fix_text(strip_and_substitute(annotation.text)),
                         "annotation_content": annotation_content,
                         "sentence":           ftfy.fix_text(strip_and_substitute(sentence_and_its_annotation["sentence"])),

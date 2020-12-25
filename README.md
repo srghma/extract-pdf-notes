@@ -5,6 +5,14 @@ echo $PATH | grep ~/.local/bin > /dev/null || echo "export PATH=$HOME/.local/bin
 extract_notes "Sample File.pdf"
 ```
 
+```
+<span class="pron-info dpron-info"><span class="pron dpron">/<span class="ipa dipa">fɛɐˈzuːxən</span>/</span></span>
+
+<span class="ipa dipa">([^<]+)<\/span>
+
+https://dictionary.cambridge.org/dictionary/german-english/versuchen
+```
+
 ## Using local docker image
 
 ```

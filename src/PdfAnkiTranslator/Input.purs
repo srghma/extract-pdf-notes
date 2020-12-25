@@ -20,18 +20,24 @@ import Foreign.Object.ST (STObject)
 import Foreign.Object.ST as STObject
 
 type InputElement =
-  { sentence :: String
-  , annotation_text :: String
+  { sentence           :: String
+  , annotation_text_id :: String
+  , position           :: String
+  , annotation_text    :: String
   , annotation_content :: Maybe String
   }
 
 decodeInputElement :: Json -> Either JsonDecodeError InputElement
 decodeInputElement = decodeJson >=> \(obj :: Object Json) -> ado
   sentence           <- obj .: "sentence"
+  position           <- obj .: "position"
+  annotation_text_id <- obj .: "annotation_text_id"
   annotation_text    <- obj .: "annotation_text"
   annotation_content <- obj .:? "annotation_content"
   in
   { sentence
+  , position
+  , annotation_text_id
   , annotation_text
   , annotation_content
   }

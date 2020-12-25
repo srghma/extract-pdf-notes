@@ -28,6 +28,7 @@ import PdfAnkiTranslator.Lingolive.Actions.Translation as PdfAnkiTranslator.Ling
 import PdfAnkiTranslator.Print as PdfAnkiTranslator.Print
 import PdfAnkiTranslator.ReadStdin as PdfAnkiTranslator.ReadStdin
 import Data.Codec.Argonaut as Data.Codec.Argonaut
+import PdfAnkiTranslator.Cambridge.Transcription as PdfAnkiTranslator.Cambridge.Transcription
 
 -- ./extract_notes.sh | spago run --main PdfAnkiTranslator.Main --node-args '--cache ./mycache.json'
 
@@ -63,7 +64,7 @@ main = do
           }
           >>= either (throwError <<< error <<< PdfAnkiTranslator.Lingolive.Actions.Translation.printError inputElement.annotation_text) pure
 
-        -- | traceM abbyyResult
+        traceM { abbyyResult }
 
         (googleResult :: NonEmptyArray String) <- PdfAnkiTranslator.GoogleTranslate.Translate.request
           { accessKey: config.google_translate_access_key
@@ -75,6 +76,19 @@ main = do
           }
           >>= either (throwError <<< error <<< PdfAnkiTranslator.GoogleTranslate.Translate.printError inputElement.annotation_text) pure
 
+        traceM { googleResult }
+
+        (cambridgeResult :: String) <- PdfAnkiTranslator.Cambridge.Transcription.transcription
+          { requestFn: \affjaxRequest -> PdfAnkiTranslator.AffjaxCache.requestWithCache { cache, affjaxRequest, bodyCodec: Data.Codec.Argonaut.string }
+          }
+          { text: inputElement.annotation_text
+          , srcLang: German
+          , dstLang: Russian
+          }
+          >>= either (throwError <<< error <<< PdfAnkiTranslator.Cambridge.Transcription.printError inputElement.annotation_text) pure
+
+        traceM { cambridgeResult }
+
         let renderedWord = PdfAnkiTranslator.Print.printArticleModel
               { fromAbbyy:           abbyyResult
               , fromGoogleTranslate: googleResult
@@ -85,7 +99,7 @@ main = do
 
         pure renderedWord
 
-      -- | traceM rendered
+      traceM rendered
 
       let
         print :: PdfAnkiTranslator.Print.AnkiFields -> Array String
